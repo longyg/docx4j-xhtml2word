@@ -229,6 +229,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 
     	listHelper = new ListHelper(this, ndp);
     	tableHelper = new TableHelper(this);
+		styleHelper = new StyleHelper(this);
     	
     	
 		if (hyperlinkStyleId !=null && wordMLPackage instanceof WordprocessingMLPackage) {
@@ -295,10 +296,18 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 	
 	
 	private Body imports = null; 
-    
-    
-    
-    private ListHelper listHelper;
+
+	private StyleHelper styleHelper;
+
+	public StyleHelper getStyleHelper() {
+		return styleHelper;
+	}
+
+	public void setStyleHelper(StyleHelper styleHelper) {
+		this.styleHelper = styleHelper;
+	}
+
+	private ListHelper listHelper;
     
     protected ListHelper getListHelper() {
 		return listHelper;
@@ -1686,9 +1695,12 @@ because "this.handler" is null
     }
 
     protected PPr getPPr(BlockBox blockBox, Map<String, PropertyValue> cssMap) {
+		// we use the block itself inline styles to create PPr,
+		// to avoid generate some extra inline styles
+		Map<String, PropertyValue> blockCssMap = getStyleHelper().getStyles(blockBox);
     	
         PPr pPr =  Context.getWmlObjectFactory().createPPr();
-        populatePPr(pPr, blockBox, cssMap);
+        populatePPr(pPr, blockBox, blockCssMap);
     	return pPr;
     }
     
@@ -1733,61 +1745,88 @@ because "this.handler" is null
     }
     
     protected void populatePPr(PPr pPr, Styleable blockBox, Map<String, PropertyValue> cssMap) {
-    	
-        if (paragraphFormatting.equals(FormattingOption.IGNORE_CLASS)) {
-    		addParagraphProperties(pPr, blockBox, cssMap );
-    		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
-        } else {
-        	// CLASS_TO_STYLE_ONLY or CLASS_PLUS_OTHER
-        	if (blockBox.getElement()==null) {
-        		log.debug("null blockBox element");        		
-        	} else if (blockBox.getElement().getAttribute("class")==null) {
-        		log.debug("no @class");        		        		
-        	} else  {
-        		
-        		String cssClass = blockBox.getElement().getAttribute("class").trim();
-        		if (cssClass.equals("")) {
-        			// Since there is no @class value, we might use a heading style 
-            		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
-        		} else {
-        			
-            		// Our XHTML export gives a space separated list of class names,
-            		// reflecting the style hierarchy.  Here, we just want the first one.
-            		// TODO, replace this with a configurable stylenamehandler.
-            		int pos = cssClass.indexOf(" ");
-            		if (pos>-1) {
-            			cssClass = cssClass.substring(0,  pos);
-            		}
-            		
-            		// if the docx contains this stylename, set it
-            		Style s = this.stylesByID.get(cssClass);
-            		if (s==null) {
-            			log.debug("No docx style for @class='" + cssClass + "'");
-            			// Since there is no style, we might use a heading style 
-                		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
-            		} else if (s.getType()!=null && s.getType().equals("paragraph")) {
-            			PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
-            			pPr.setPStyle(pStyle);
-            			pStyle.setVal(cssClass);
-            		} else {
-            			log.debug("For docx style for @class='" + cssClass + "', but its not a paragraph style ");
-            			// Since that's not a p style, we might use a heading style 
-                		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
-            		}
-        		}
-        	}
-			if (paragraphFormatting.equals(FormattingOption.CLASS_PLUS_OTHER)) {
-				addParagraphProperties(pPr, blockBox, cssMap );
-			}        	
-    	}
+		for (String cssName: cssMap.keySet()) {
+			PropertyValue cssValue = cssMap.get(cssName);
+			Property p = PropertyFactory.createPropertyFromCssName(cssName, new DomCssValueAdaptor(cssValue));
+			if (p!=null) {
+				if (p instanceof AbstractParagraphProperty) {
+					((AbstractParagraphProperty)p).set(pPr);
+				} else {
+					// try specific method
+					p = PropertyFactory.createPropertyFromCssNameForPPr(cssName,  new DomCssValueAdaptor(cssValue));
+					if (p instanceof AbstractParagraphProperty) {
+						((AbstractParagraphProperty)p).set(pPr);
+					}
+				}
+			}
+		}
+
+		String primaryClass = getStyleHelper().getPrimaryClass(blockBox);
+		if (null != primaryClass) {
+			Style s = this.stylesByID.get(primaryClass);
+			if (null == s) {
+				log.error("No docx style for @class='{}'", primaryClass);
+			} else {
+				PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
+				pPr.setPStyle(pStyle);
+				pStyle.setVal(primaryClass);
+			}
+		}
+
+//		if (paragraphFormatting.equals(FormattingOption.IGNORE_CLASS)) {
+//    		addParagraphProperties(pPr, blockBox, cssMap );
+//    		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
+//        } else {
+//        	// CLASS_TO_STYLE_ONLY or CLASS_PLUS_OTHER
+//        	if (blockBox.getElement()==null) {
+//        		log.debug("null blockBox element");
+//        	} else if (blockBox.getElement().getAttribute("class")==null) {
+//        		log.debug("no @class");
+//        	} else  {
+//
+//        		String cssClass = blockBox.getElement().getAttribute("class").trim();
+//        		if (cssClass.equals("")) {
+//        			// Since there is no @class value, we might use a heading style
+//            		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
+//        		} else {
+//
+//            		// Our XHTML export gives a space separated list of class names,
+//            		// reflecting the style hierarchy.  Here, we just want the first one.
+//            		// TODO, replace this with a configurable stylenamehandler.
+//            		int pos = cssClass.indexOf(" ");
+//            		if (pos>-1) {
+//            			cssClass = cssClass.substring(0,  pos);
+//            		}
+//
+//            		// if the docx contains this stylename, set it
+//            		Style s = this.stylesByID.get(cssClass);
+//            		if (s==null) {
+//            			log.debug("No docx style for @class='" + cssClass + "'");
+//            			// Since there is no style, we might use a heading style
+//                		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
+//            		} else if (s.getType()!=null && s.getType().equals("paragraph")) {
+//            			PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
+//            			pPr.setPStyle(pStyle);
+//            			pStyle.setVal(cssClass);
+//            		} else {
+//            			log.debug("For docx style for @class='" + cssClass + "', but its not a paragraph style ");
+//            			// Since that's not a p style, we might use a heading style
+//                		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
+//            		}
+//        		}
+//        	}
+//			if (paragraphFormatting.equals(FormattingOption.CLASS_PLUS_OTHER)) {
+//				addParagraphProperties(pPr, blockBox, cssMap );
+//			}
+//    	}
 
         if (blockBox.getElement()==null) {
-        	log.debug("BB getElement is null");        
+        	log.debug("BB getElement is null");
         } else if (isBidi(blockBox.getElement().getTextContent())) {
         	log.debug(".. setting bidi property");
         	pPr.setBidi(new BooleanDefaultTrue() );
         }
-    	
+
         
     }
     
@@ -2003,7 +2042,8 @@ because "this.handler" is null
     		
     	} 
         
-        Map<String, PropertyValue> cssMap = getCascadedProperties(s.getStyle());
+//        Map<String, PropertyValue> cssMap = getCascadedProperties(s.getStyle());
+		Map<String, PropertyValue> cssMap = getStyleHelper().getStyles(s);
 //        Map cssMap = styleReference.getCascadedPropertiesMap(s.getElement());
         
         
@@ -2024,7 +2064,8 @@ because "this.handler" is null
         } else {
             debug = "<" + s.getElement().getNodeName();
             
-            String cssClass = getClassAttribute(s.getElement());
+//            String cssClass = getClassAttribute(s.getElement());
+			String cssClass = getStyleHelper().getPrimaryClass(s);
         	if (cssClass!=null) {
         	 	cssClass=cssClass.trim();
         	}
@@ -2220,7 +2261,8 @@ because "this.handler" is null
             String theText = inlineBox.getText(); 
             log.debug("Processing " + theText);
             
-            String cssClass = getClassAttribute(s.getElement());
+//            String cssClass = getClassAttribute(s.getElement());
+			String cssClass = getStyleHelper().getPrimaryClass(s);
         	if (cssClass!=null) {
         	 	cssClass=cssClass.trim();
         	}
@@ -2323,13 +2365,16 @@ because "this.handler" is null
 		getListForRun().getContent().add(run);
 		
 		// Run level styling
-        RPr rPr =  Context.getWmlObjectFactory().createRPr();
-        run.setRPr(rPr);
-        formatRPr(rPr, cssClass, cssMap);
-        
-        if (isRTL) {
-        	rPr.setRtl(new BooleanDefaultTrue());
-        }
+		// if no any classes and inline styles, no need to create RPr
+		if ((null != cssClass && !"".equals(cssClass)) || cssMap.size() > 0) {
+			RPr rPr = Context.getWmlObjectFactory().createRPr();
+			run.setRPr(rPr);
+			formatRPr(rPr, cssClass, cssMap);
+
+			if (isRTL) {
+				rPr.setRtl(new BooleanDefaultTrue());
+			}
+		}
 	}
 	
 	private void formatRPr(RPr rPr, String cssClass, Map<String, PropertyValue> cssMap) {
