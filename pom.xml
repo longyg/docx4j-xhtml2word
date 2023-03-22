@@ -8,7 +8,7 @@
     <version>${revision}</version>
 
     <properties>
-        <revision>1.0.0</revision>
+        <revision>1.0.1</revision>
         <version.docx4j>11.4.9</version.docx4j>
         <packaging.type>jar</packaging.type>
         <!-- github server corresponds to entry in ~/.m2/settings.xml -->
@@ -136,9 +136,6 @@
                     <serverId>oss</serverId>
                     <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
                     <autoReleaseAfterClose>false</autoReleaseAfterClose>
-                    <keepStagingRepositoryOnFailure>true</keepStagingRepositoryOnFailure>
-                    <keepStagingRepositoryOnCloseRuleFailure>true</keepStagingRepositoryOnCloseRuleFailure>
-                    <autoDropAfterRelease>false</autoDropAfterRelease>
                 </configuration>
             </plugin>
 
