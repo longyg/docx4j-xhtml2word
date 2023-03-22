@@ -62,7 +62,7 @@ public class ConvertInXHTMLFile {
     public static void main(String[] args) throws Exception {
         
     	
-        String inputfilepath = System.getProperty("user.dir") + "/sample-docs/docx/DocxToXhtmlAndBack.html";
+        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/font.docx.html";
         
      // Images: provide correct baseURL
     	String baseURL = "file:///bvols/@git/repos/docx4j-ImportXHTML/sample-docs/docx/sample-docxv2.docx_files";    	
@@ -89,9 +89,11 @@ public class ConvertInXHTMLFile {
         XHTMLImporterImpl.addFontMapping("Century Gothic", rfonts);
         
         // Create an empty docx package
-		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.createPackage();
+//		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.createPackage();
 //		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new File(System.getProperty("user.dir") + "/styled.docx"));
 
+		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new File(System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/font.docx"));
+		wordMLPackage.getMainDocumentPart().getContent().clear();
 		
 		NumberingDefinitionsPart ndp = new NumberingDefinitionsPart();
 		wordMLPackage.getMainDocumentPart().addTargetPart(ndp);
