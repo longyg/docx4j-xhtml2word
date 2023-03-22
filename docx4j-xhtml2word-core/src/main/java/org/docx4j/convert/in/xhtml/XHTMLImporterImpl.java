@@ -515,7 +515,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
             wordMLPackage.getMainDocumentPart().getStyleDefinitionsPart().setCss(css);
         }
 
-        log.info(css);
+        log.debug(css);
 
         return css;
     }
@@ -818,7 +818,7 @@ because "this.handler" is null
 
             if (val == null) {
 
-                log.warn("Skipping " + name.toString() + " .. (null value)");
+                log.debug("Skipping " + name.toString() + " .. (null value)");
 
             } else {
 
@@ -2238,7 +2238,7 @@ because "this.handler" is null
             }
 
         } else {
-            log.warn("\n\n" + inlineBox.getText());  // don't use .getText()
+            log.debug("\n\n" + inlineBox.getText());  // don't use .getText()
 
             String theText = inlineBox.getText();
             log.debug("Processing " + theText);
@@ -2436,9 +2436,9 @@ because "this.handler" is null
             if (clazz.isAssignableFrom(String.class)) {
                 field.set(rFonts, value);
             } else if (clazz.isAssignableFrom(STTheme.class)) {
-                field.set(rFonts, STTheme.valueOf(value));
+                field.set(rFonts, STTheme.fromValue(value));
             } else if (clazz.isAssignableFrom(STHint.class)) {
-                field.set(rFonts, STHint.valueOf(value));
+                field.set(rFonts, STHint.fromValue(value));
             }
         }
     }
