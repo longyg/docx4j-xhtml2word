@@ -7,7 +7,10 @@ import com.openhtmltopdf.css.parser.PropertyValue;
 import com.openhtmltopdf.css.sheet.Ruleset;
 import com.openhtmltopdf.css.sheet.StylesheetInfo;
 import com.openhtmltopdf.layout.Styleable;
+import com.openhtmltopdf.render.Box;
+import com.openhtmltopdf.render.InlineBox;
 import org.docx4j.wml.Style;
+import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
@@ -34,11 +37,54 @@ public class StyleHelper {
         stylesheetFactory = new StylesheetFactoryImpl(importer.getRenderer().getDocx4jUserAgent());
     }
 
-    public Map<String, PropertyValue> getStyles(Styleable box) {
+    public Map<String, PropertyValue> getBlockBoxStyles(Box box, Box rootBox) {
+        Map<String, PropertyValue> styles = getBoxStyles(box);
+        setParentBoxStyles(box, rootBox, styles);
+        return styles;
+    }
+
+    private void setParentBoxStyles(Box box, Box rootBox, Map<String, PropertyValue> styles) {
+        if (null == box || null == box.getParent() || box == rootBox) return;
+        Box curBox = box.getParent();
+        Map<String, PropertyValue> parentStyles = getBoxStyles(curBox);
+        copyNotExistStyles(parentStyles, styles);
+        setParentBoxStyles(curBox, rootBox, styles);
+    }
+
+    public Map<String, PropertyValue> getInlineBoxStyles(InlineBox inlineBox, Box containingBox) {
+        Map<String, PropertyValue> styles = getBoxStyles(inlineBox);
+        setParentElementStyles(inlineBox.getElement(), containingBox, styles);
+        return styles;
+    }
+
+    private void setParentElementStyles(Node node, Box containingBox, Map<String, PropertyValue> styles) {
+        if (null == node) return;
+        Node curNode = node.getParentNode();
+        if (null == curNode || curNode == containingBox.getElement()) return;
+        if (curNode.getNodeType() == Node.ELEMENT_NODE) {
+            Map<String, PropertyValue> parentStyles = getElementStyles((Element) curNode);
+            copyNotExistStyles(parentStyles, styles);
+        }
+        setParentElementStyles(curNode, containingBox, styles);
+    }
+
+    private void copyNotExistStyles(Map<String, PropertyValue> source, Map<String, PropertyValue> dest) {
+        source.forEach((name, value) -> {
+            if (!dest.containsKey(name)) {
+                dest.put(name, value);
+            }
+        });
+    }
+
+    private Map<String, PropertyValue> getBoxStyles(Styleable box) {
+        return getElementStyles(box.getElement());
+    }
+
+    private Map<String, PropertyValue> getElementStyles(Element element) {
         Map<String, PropertyValue> styles = new HashMap<>();
-        if (null == box || null == box.getElement()) return styles;
+        if (null == element) return styles;
         Ruleset ruleset = stylesheetFactory.parseStyleDeclaration(
-                StylesheetInfo.AUTHOR, box.getElement().getAttribute("style"));
+                StylesheetInfo.AUTHOR, element.getAttribute("style"));
         ruleset.getPropertyDeclarations().forEach(pd -> {
             String cssName = pd.getCSSName().toString();
             // white-space and font styles are handled separately, so do not add it
@@ -47,7 +93,6 @@ public class StyleHelper {
                     cssName.contains(FONT_FAMILY)) return;
             styles.put(cssName, (PropertyValue) pd.getValue());
         });
-        addFontStyle(styles, box);
         return styles;
     }
 
@@ -69,14 +114,52 @@ public class StyleHelper {
         return FONT_STYLE_NAMES.contains(styleName);
     }
 
-    public String getPrimaryClass(Styleable box) {
-        if (null == box || null == box.getElement()) return null;
-        String cssClass = box.getElement().getAttribute("class").trim();
+    public String getBlockBoxPrimaryClass(Box box, Box rootBox) {
+        String cName = getBoxPrimaryClass(box);
+        if (null != cName) return cName;
+        return getParentBlockPrimaryClass(box, rootBox);
+    }
+
+    public String getParentBlockPrimaryClass(Box box, Box rootBox) {
+        if (null == box || null == box.getParent() || box == rootBox) return null;
+        Box curBox = box.getParent();
+        String cName = getBoxPrimaryClass(curBox);
+        if (null != cName) return cName;
+        return getParentBlockPrimaryClass(curBox, rootBox);
+    }
+
+    public String getInlineBoxPrimaryClass(InlineBox inlineBox, Box containingBox) {
+        String cName = getBoxPrimaryClass(inlineBox);
+        if (null != cName) return cName;
+        return getParentElementPrimaryClass(inlineBox.getElement(), containingBox);
+    }
+
+    private String getParentElementPrimaryClass(Node node, Box containingBox) {
+        if (null == node) return null;
+        Node curNode = node.getParentNode();
+        if (null == curNode || curNode == containingBox.getElement()) return null;
+        if (curNode.getNodeType() == Node.ELEMENT_NODE) {
+            String cName = getElementPrimaryClass((Element) curNode);
+            if (null != cName) return cName;
+            return getParentElementPrimaryClass(curNode, containingBox);
+        }
+        return null;
+    }
+
+    public String getBoxPrimaryClass(Styleable box) {
+        return getElementPrimaryClass(box.getElement());
+    }
+
+    private String getElementPrimaryClass(Element element) {
+        if (null == element) return null;
+        String cssClass = element.getAttribute("class").trim();
         if (!cssClass.equals("")) {
+            // only get the first one as primary class
             int pos = cssClass.indexOf(" ");
             if (pos > -1) {
                 cssClass = cssClass.substring(0, pos);
             }
+            // only if there is style defined in style.xml of word
             Style s = importer.stylesByID.get(cssClass);
             // do not add default class, as default class do not need to generate to word for paragraph
             // need to check for other parts

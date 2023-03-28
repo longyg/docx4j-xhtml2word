@@ -28,6 +28,7 @@
 package org.docx4j.samples;
 
 import org.apache.commons.io.FileUtils;
+import org.docx4j.Docx4jProperties;
 import org.docx4j.XmlUtils;
 import org.docx4j.convert.in.xhtml.XHTMLImporterImpl;
 import org.docx4j.jaxb.Context;
@@ -60,9 +61,10 @@ import java.io.File;
 public class ConvertInXHTMLFile {
 
     public static void main(String[] args) throws Exception {
-        
+
+		Docx4jProperties.setProperty("docx4j.model.properties.PropertyFactory.createPropertyFromCssName.background-color.useHighlightInRPr", false);
     	
-        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/font.docx.html";
+        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/test1.html";
         
      // Images: provide correct baseURL
     	String baseURL = "file:///bvols/@git/repos/docx4j-ImportXHTML/sample-docs/docx/sample-docxv2.docx_files";    	
@@ -92,7 +94,7 @@ public class ConvertInXHTMLFile {
 //		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.createPackage();
 //		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new File(System.getProperty("user.dir") + "/styled.docx"));
 
-		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new File(System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/font.docx"));
+		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new File(System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/test1.docx"));
 		wordMLPackage.getMainDocumentPart().getContent().clear();
 		
 		NumberingDefinitionsPart ndp = new NumberingDefinitionsPart();

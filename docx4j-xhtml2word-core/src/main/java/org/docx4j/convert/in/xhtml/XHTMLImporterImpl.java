@@ -976,16 +976,16 @@ because "this.handler" is null
 
     private void traverse(Box box, TableProperties tableProperties) throws Docx4JException {
         setDefaultFontSize();
-        traverse(box, null, tableProperties);
+        traverse(box, null, box, tableProperties);
         unsetDefaultFontSize();
     }
 
-    private void traverse(Box box, Box parent, TableProperties tableProperties) throws Docx4JException {
+    private void traverse(Box box, Box parent, Box rootBox, TableProperties tableProperties) throws Docx4JException {
 
         log.debug(box.getClass().getName());
         if (box instanceof BlockBox) {
 
-            traverseBlockBox(box, parent, tableProperties);
+            traverseBlockBox(box, parent, rootBox, tableProperties);
 
         } else if (box instanceof AnonymousBlockBox) {
             log.debug("AnonymousBlockBox");
@@ -995,7 +995,7 @@ because "this.handler" is null
 
     }
 
-    private void traverseBlockBox(Box box, Box parent, TableProperties tableProperties) throws Docx4JException {
+    private void traverseBlockBox(Box box, Box parent, Box rootBox, TableProperties tableProperties) throws Docx4JException {
 
         boolean mustPop = false;
         BlockBox blockBox = ((BlockBox) box);
@@ -1072,7 +1072,7 @@ because "this.handler" is null
                                 && this.getCurrentParagraph(false).getPPr().getNumPr() != null
                 ) {
                     NumPr numPr = this.getCurrentParagraph(false).getPPr().getNumPr();
-                    this.getCurrentParagraph(true).setPPr(this.getPPr(blockBox, cssMap));
+                    this.getCurrentParagraph(true).setPPr(this.getPPr(blockBox, rootBox, cssMap));
                     this.getCurrentParagraph(false).getPPr().setNumPr(numPr);
                     /* actually, we should be using the definition found here,
                      * since it could be intended to override!
@@ -1082,7 +1082,7 @@ because "this.handler" is null
                      * */
                 } else {
                     // usual case
-                    this.getCurrentParagraph(true).setPPr(this.getPPr(blockBox, cssMap));
+                    this.getCurrentParagraph(true).setPPr(this.getPPr(blockBox, rootBox, cssMap));
 
                 }
 
@@ -1462,7 +1462,7 @@ because "this.handler" is null
 
                     log.debug("create new attachmentPoint");
                     P currentP = this.getCurrentParagraph(true);
-                    currentP.setPPr(this.getPPr(blockBox, cssMap));
+                    currentP.setPPr(this.getPPr(blockBox, rootBox, cssMap));
 
                     log.debug(XmlUtils.marshaltoString(currentP));
 
@@ -1485,7 +1485,7 @@ because "this.handler" is null
                 for (Object o : ((BlockBox) box).getChildren()) {
                     log.debug("   processing child " + o.getClass().getName());
 
-                    traverse((Box) o, box, tableProperties);
+                    traverse((Box) o, box, rootBox, tableProperties);
                     log.debug(".. processed child " + o.getClass().getName());
                 }
                 break;
@@ -1501,11 +1501,11 @@ because "this.handler" is null
 //                                    && ((InlineBox)o).getElement()!=null // skip these (pseudo-elements?)
 //                                    && ((InlineBox)o).isStartsHere()) {
 
-                            processInlineBox((InlineBox) o);
+                            processInlineBox((InlineBox) o, box);
 
                         } else if (o instanceof BlockBox) {
 
-                            traverse((Box) o, box, tableProperties); // commenting out gets rid of unwanted extra parent elements
+                            traverse((Box) o, box, (Box) o, tableProperties); // commenting out gets rid of unwanted extra parent elements
                             //contentContext = tmpContext;
                         } else {
                             log.debug("What to do with " + box.getClass().getName());
@@ -1678,13 +1678,13 @@ because "this.handler" is null
         simpleField.getContent().add(resultRun);
     }
 
-    protected PPr getPPr(BlockBox blockBox, Map<String, PropertyValue> cssMap) {
-        // we use the block itself inline styles to create PPr,
-        // to avoid generate some extra inline styles
-        Map<String, PropertyValue> blockCssMap = getStyleHelper().getStyles(blockBox);
-
+    protected PPr getPPr(BlockBox blockBox, Box rootBox, Map<String, PropertyValue> cssMap) {
+        // ========== customized by longyg ==================
+        // we use the block itself and parent's inline styles to create PPr,
+        // to avoid generate some extra inline styles which are derived from common styles
+        Map<String, PropertyValue> blockCssMap = getStyleHelper().getBlockBoxStyles(blockBox, rootBox);
         PPr pPr = Context.getWmlObjectFactory().createPPr();
-        populatePPr(pPr, blockBox, blockCssMap);
+        populatePPr(pPr, blockBox, rootBox, blockCssMap);
         return pPr;
     }
 
@@ -1728,81 +1728,63 @@ because "this.handler" is null
         return ((rtl / ltr) > 0.5);
     }
 
-    protected void populatePPr(PPr pPr, Styleable blockBox, Map<String, PropertyValue> cssMap) {
-        for (String cssName : cssMap.keySet()) {
-            PropertyValue cssValue = cssMap.get(cssName);
-            Property p = PropertyFactory.createPropertyFromCssName(cssName, new DomCssValueAdaptor(cssValue));
-            if (p != null) {
-                if (p instanceof AbstractParagraphProperty) {
-                    ((AbstractParagraphProperty) p).set(pPr);
-                } else {
-                    // try specific method
-                    p = PropertyFactory.createPropertyFromCssNameForPPr(cssName, new DomCssValueAdaptor(cssValue));
-                    if (p instanceof AbstractParagraphProperty) {
-                        ((AbstractParagraphProperty) p).set(pPr);
-                    }
-                }
-            }
-        }
+    protected void populatePPr(PPr pPr, Styleable blockBox, Box rootBox, Map<String, PropertyValue> cssMap) {
+		if (paragraphFormatting.equals(FormattingOption.IGNORE_CLASS)) {
+    		addParagraphProperties(pPr, blockBox, cssMap );
+    		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
+        } else {
+        	// CLASS_TO_STYLE_ONLY or CLASS_PLUS_OTHER
+        	if (blockBox.getElement()==null) {
+        		log.debug("null blockBox element");
+        	} else if (blockBox.getElement().getAttribute("class")==null) {
+        		log.debug("no @class");
+        	} else  {
 
-        String primaryClass = getStyleHelper().getPrimaryClass(blockBox);
-        if (null != primaryClass) {
-            Style s = this.stylesByID.get(primaryClass);
-            if (null == s) {
-                log.error("No docx style for @class='{}'", primaryClass);
-            } else {
-                PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
-                pPr.setPStyle(pStyle);
-                pStyle.setVal(primaryClass);
-            }
-        }
-
-//		if (paragraphFormatting.equals(FormattingOption.IGNORE_CLASS)) {
-//    		addParagraphProperties(pPr, blockBox, cssMap );
-//    		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
-//        } else {
-//        	// CLASS_TO_STYLE_ONLY or CLASS_PLUS_OTHER
-//        	if (blockBox.getElement()==null) {
-//        		log.debug("null blockBox element");
-//        	} else if (blockBox.getElement().getAttribute("class")==null) {
-//        		log.debug("no @class");
-//        	} else  {
-//
 //        		String cssClass = blockBox.getElement().getAttribute("class").trim();
-//        		if (cssClass.equals("")) {
-//        			// Since there is no @class value, we might use a heading style
-//            		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
-//        		} else {
-//
-//            		// Our XHTML export gives a space separated list of class names,
-//            		// reflecting the style hierarchy.  Here, we just want the first one.
-//            		// TODO, replace this with a configurable stylenamehandler.
+                // ================ customized by longyg start ===========
+                // get css class from the block box or from it's parent
+                String cssClass = null;
+                if (blockBox instanceof InlineBox) {
+                    cssClass = getStyleHelper().getInlineBoxPrimaryClass((InlineBox) blockBox, rootBox);
+                } else if (blockBox instanceof BlockBox) {
+                    cssClass = getStyleHelper().getBlockBoxPrimaryClass((Box) blockBox, rootBox);
+                }
+        		if (null == cssClass || cssClass.equals("")) {
+        			// Since there is no @class value, we might use a heading style
+            		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
+        		} else {
+
+
+            		// Our XHTML export gives a space separated list of class names,
+            		// reflecting the style hierarchy.  Here, we just want the first one.
+            		// TODO, replace this with a configurable stylenamehandler.
 //            		int pos = cssClass.indexOf(" ");
 //            		if (pos>-1) {
 //            			cssClass = cssClass.substring(0,  pos);
 //            		}
-//
-//            		// if the docx contains this stylename, set it
-//            		Style s = this.stylesByID.get(cssClass);
-//            		if (s==null) {
-//            			log.debug("No docx style for @class='" + cssClass + "'");
-//            			// Since there is no style, we might use a heading style
-//                		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
-//            		} else if (s.getType()!=null && s.getType().equals("paragraph")) {
-//            			PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
-//            			pPr.setPStyle(pStyle);
-//            			pStyle.setVal(cssClass);
-//            		} else {
-//            			log.debug("For docx style for @class='" + cssClass + "', but its not a paragraph style ");
-//            			// Since that's not a p style, we might use a heading style
-//                		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
-//            		}
-//        		}
-//        	}
-//			if (paragraphFormatting.equals(FormattingOption.CLASS_PLUS_OTHER)) {
-//				addParagraphProperties(pPr, blockBox, cssMap );
-//			}
-//    	}
+                    // ================ customized by longyg end ===========
+
+            		// if the docx contains this stylename, set it
+            		Style s = this.stylesByID.get(cssClass);
+            		if (s==null) {
+            			log.debug("No docx style for @class='" + cssClass + "'");
+            			// Since there is no style, we might use a heading style
+                		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
+            		} else if (s.getType()!=null && s.getType().equals("paragraph")) {
+            			PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
+            			pPr.setPStyle(pStyle);
+            			pStyle.setVal(cssClass);
+            		} else {
+            			log.debug("For docx style for @class='" + cssClass + "', but its not a paragraph style ");
+            			// Since that's not a p style, we might use a heading style
+                		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
+            		}
+        		}
+        	}
+			if (paragraphFormatting.equals(FormattingOption.CLASS_PLUS_OTHER)) {
+				addParagraphProperties(pPr, blockBox, cssMap );
+			}
+    	}
 
         if (blockBox.getElement() == null) {
             log.debug("BB getElement is null");
@@ -1966,7 +1948,7 @@ because "this.handler" is null
 //	}
 
 
-    private void processInlineBox(InlineBox inlineBox) {
+    private void processInlineBox(InlineBox inlineBox, Box containingBox) {
 
         if (inlineBox.getPseudoElementOrClass() != null) {
             log.debug("Ignoring Pseudo");
@@ -2026,8 +2008,13 @@ because "this.handler" is null
         }
 
 //        Map<String, PropertyValue> cssMap = getCascadedProperties(s.getStyle());
-        Map<String, PropertyValue> cssMap = getStyleHelper().getStyles(s);
 //        Map cssMap = styleReference.getCascadedPropertiesMap(s.getElement());
+
+        // ============== customized by longyg start ================
+        // we use the inline box itself and parent's inline styles to create RPr,
+        // to avoid generate some extra inline styles which are derived from common styles
+        Map<String, PropertyValue> cssMap = getStyleHelper().getInlineBoxStyles(inlineBox, containingBox);
+        // ============== customized by longyg end ==================
 
 
         // Make sure the current paragraph is formatted
@@ -2035,7 +2022,7 @@ because "this.handler" is null
         if (p.getPPr() == null) {
             PPr pPr = Context.getWmlObjectFactory().createPPr();
 
-            populatePPr(pPr, s, cssMap);  // nb, since the element is likely to be null, this is unlikely to give us a @class; that's why we need to make the p in the enclosing div (or p).
+            populatePPr(pPr, s, containingBox, cssMap);  // nb, since the element is likely to be null, this is unlikely to give us a @class; that's why we need to make the p in the enclosing div (or p).
             //addParagraphProperties( pPr,  s,  cssMap);
             p.setPPr(pPr);
         }
@@ -2048,7 +2035,7 @@ because "this.handler" is null
             debug = "<" + s.getElement().getNodeName();
 
 //            String cssClass = getClassAttribute(s.getElement());
-            String cssClass = getStyleHelper().getPrimaryClass(s);
+            String cssClass = getStyleHelper().getInlineBoxPrimaryClass(inlineBox, containingBox);
             if (cssClass != null) {
                 cssClass = cssClass.trim();
             }
@@ -2200,11 +2187,12 @@ because "this.handler" is null
         log.debug(debug);
         //log.debug("'" + ((InlineBox)o).getTextNode().getTextContent() );  // don't use .getText()
 
-        processInlineBoxContent(inlineBox, s, cssMap);
+        processInlineBoxContent(inlineBox, s, containingBox, cssMap);
 
     }
 
     private void processInlineBoxContent(InlineBox inlineBox, Styleable s,
+                                         Box containgBox,
                                          Map<String, PropertyValue> cssMap) {
 
 
@@ -2244,7 +2232,7 @@ because "this.handler" is null
             log.debug("Processing " + theText);
 
 //            String cssClass = getClassAttribute(s.getElement());
-            String cssClass = getStyleHelper().getPrimaryClass(s);
+            String cssClass = getStyleHelper().getInlineBoxPrimaryClass(inlineBox, containgBox);
             if (cssClass != null) {
                 cssClass = cssClass.trim();
             }
@@ -2583,18 +2571,18 @@ because "this.handler" is null
         // simply duplicates something which is already in the paragraph style,
         // since such direct formatting is probably not the author's intent,
         // and makes the document less maintainable
-        PPr stylePPr = null;
-        // TODO: take numbering pPr into account here (see above)
-        PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
-        if (this.getCurrentParagraph(false).getPPr() != null
-                && this.getCurrentParagraph(false).getPPr().getPStyle() != null) {
-            // that's only be true for paragraphFormatting = FormattingOption.CLASS_PLUS_OTHER;
-            // (we never get here for the other options)
-
-            String styleId = this.getCurrentParagraph(false).getPPr().getPStyle().getVal();
-            stylePPr = propertyResolver.getEffectivePPr(styleId);
-            PPrCleanser.removeRedundantProperties(stylePPr, pPr);
-        }
+//        PPr stylePPr = null;
+//        // TODO: take numbering pPr into account here (see above)
+//        PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
+//        if (this.getCurrentParagraph(false).getPPr() != null
+//                && this.getCurrentParagraph(false).getPPr().getPStyle() != null) {
+//            // that's only be true for paragraphFormatting = FormattingOption.CLASS_PLUS_OTHER;
+//            // (we never get here for the other options)
+//
+//            String styleId = this.getCurrentParagraph(false).getPPr().getPStyle().getVal();
+//            stylePPr = propertyResolver.getEffectivePPr(styleId);
+//            PPrCleanser.removeRedundantProperties(stylePPr, pPr);
+//        }
 
         // TODO: cleansing in table context
 
@@ -2721,6 +2709,7 @@ because "this.handler" is null
         // simply duplicates something which is already in the paragraph style,
         // since such direct formatting is probably not the author's intent,
         // and makes the document less maintainable
+        /**
         RPr styleRPr = null;
         PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
         if (pStyleId != null) {
@@ -2739,6 +2728,7 @@ because "this.handler" is null
             styleRPr = propertyResolver.getEffectiveRPr(styleId);
             RPrCleanser.removeRedundantProperties(styleRPr, rPr);
         }
+         */
 
         // TODO: cleansing in table context
 
