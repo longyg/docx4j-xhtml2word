@@ -10,7 +10,6 @@ module docx4j_xhtml2word_core {
 	requires org.apache.pdfbox;
 	requires apache.mime4j.core;
 	requires org.apache.commons.codec;
-	requires lombok;
 
 	//requires transitive java.xml.Node;
 	

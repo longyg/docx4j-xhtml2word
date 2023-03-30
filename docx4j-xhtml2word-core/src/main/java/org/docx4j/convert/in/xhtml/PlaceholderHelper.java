@@ -36,7 +36,7 @@ public class PlaceholderHelper {
         if (null == type) return null;
         String id = element.getAttribute("data-id");
         String name = element.getAttribute("data-name");
-        return Placeholder.builder().id(id).name(name).type(type).build();
+        return new Placeholder(id, name, type);
     }
 
     public void addPlaceholder(ContentAccessor contentAccessor, Placeholder placeholder) {
