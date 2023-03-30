@@ -215,6 +215,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         listHelper = new ListHelper(this, ndp);
         tableHelper = new TableHelper(this);
         styleHelper = new StyleHelper(this);
+        placeholderHelper = new PlaceholderHelper();
 
 
         if (hyperlinkStyleId != null && wordMLPackage instanceof WordprocessingMLPackage) {
@@ -281,6 +282,8 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     private Body imports = null;
 
     private StyleHelper styleHelper;
+
+    private PlaceholderHelper placeholderHelper;
 
     public StyleHelper getStyleHelper() {
         return styleHelper;
@@ -1008,6 +1011,13 @@ because "this.handler" is null
 //            log.debug("BB"  + "<" + e.getNodeName() + " " + box.getStyle().toStringMine() );
             log.debug(box.getStyle().getStringProperty(CSSName.DISPLAY));
 //                log.debug(box.getElement().getAttribute("class"));            	
+        }
+
+        // handle placeholder if it is and return immediately so that the child box won't be handled unexpectedly
+        Placeholder placeholder = placeholderHelper.checkAndGetPlaceholder(blockBox);
+        if (null != placeholder) {
+            placeholderHelper.addPlaceholder(getListForRun(), placeholder);
+            return;
         }
 
         // bookmark start?
@@ -1952,6 +1962,11 @@ because "this.handler" is null
 
         if (inlineBox.getPseudoElementOrClass() != null) {
             log.debug("Ignoring Pseudo");
+            return;
+        }
+
+        if (inlineBox.getElement() == null && inlineBox.getText().equals(" ")) {
+            log.debug("Ignoring null element inline box");
             return;
         }
 
