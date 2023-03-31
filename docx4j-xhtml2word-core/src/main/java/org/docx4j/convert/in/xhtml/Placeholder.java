@@ -39,6 +39,6 @@ public class Placeholder {
     }
 
     public String getString() {
-        return "-" + name + "-" + id;
+        return "." + name + "." + id;
     }
 }

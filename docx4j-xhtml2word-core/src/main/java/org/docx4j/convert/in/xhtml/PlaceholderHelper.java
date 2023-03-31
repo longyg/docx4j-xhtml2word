@@ -43,7 +43,7 @@ public class PlaceholderHelper {
         contentAccessor.getContent().add(createPlaceholderMergeField(placeholder));
     }
 
-    // do not have any style
+    // do not have any style on created merge filed
     private JAXBElement<CTSimpleField> createPlaceholderMergeFieldWithoutStyle(Placeholder placeholder) {
         CTSimpleField field = Context.getWmlObjectFactory().createCTSimpleField();
         field.setInstr(buildInstruction(placeholder));
@@ -53,8 +53,7 @@ public class PlaceholderHelper {
         return Context.getWmlObjectFactory().createPFldSimple(field);
     }
 
-    // have color and background color style
-    // such will have problem that some <w:fldSimple> will be automatically changed to <w:run> when user edit the created word anywhere...
+    // have color and background color style on created merge field
     private JAXBElement<CTSimpleField> createPlaceholderMergeField(Placeholder placeholder) {
         CTSimpleField field = Context.getWmlObjectFactory().createCTSimpleField();
         field.setInstr(buildInstruction(placeholder));
