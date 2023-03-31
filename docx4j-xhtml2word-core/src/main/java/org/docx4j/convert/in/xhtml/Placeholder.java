@@ -4,6 +4,7 @@ package org.docx4j.convert.in.xhtml;
  * @author longyg
  */
 public class Placeholder {
+    public static final String SEPARATOR = ".";
     private String id;
     private String name;
     private PlaceholderType type;
@@ -39,6 +40,6 @@ public class Placeholder {
     }
 
     public String getString() {
-        return "." + name + "." + id;
+        return SEPARATOR + name + SEPARATOR + id;
     }
 }

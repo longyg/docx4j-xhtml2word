@@ -6,6 +6,8 @@ import org.docx4j.jaxb.Context;
 import org.docx4j.wml.*;
 import org.w3c.dom.Element;
 
+import static org.docx4j.convert.in.xhtml.Placeholder.SEPARATOR;
+
 /**
  * @author longyg
  */
@@ -64,7 +66,7 @@ public class PlaceholderHelper {
     private String buildInstruction(Placeholder placeholder) {
         StringBuilder sb = new StringBuilder();
         sb.append(MERGE_FIELD_PREFIX).append(placeholder.getType().getDisplay())
-                .append("-").append(placeholder.getName()).append("-")
+                .append(SEPARATOR).append(placeholder.getName()).append(SEPARATOR)
                 .append(placeholder.getId()).append(MERGE_FIELD_SUFFIX);
         return sb.toString();
     }
