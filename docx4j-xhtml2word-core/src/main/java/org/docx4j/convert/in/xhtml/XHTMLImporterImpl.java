@@ -39,13 +39,10 @@ import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.Bidi;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.openhtmltopdf.newtable.TableCellBox;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBElement;
 import jakarta.xml.bind.JAXBException;
@@ -2028,7 +2025,13 @@ because "this.handler" is null
         // ============== customized by longyg start ================
         // we use the inline box itself and parent's inline styles to create RPr,
         // to avoid generate some extra inline styles which are derived from common styles
-        Map<String, PropertyValue> cssMap = getStyleHelper().getInlineBoxStyles(inlineBox, containingBox);
+        Map<String, PropertyValue> cssMap;
+        if (containingBox instanceof TableCellBox) {
+            // for table cell, it is difference than paragraph, so we still use the original logic currently
+            cssMap = getCascadedProperties(s.getStyle());
+        } else {
+            cssMap = getStyleHelper().getInlineBoxStyles(inlineBox, containingBox);
+        }
         // ============== customized by longyg end ==================
 
 
@@ -2410,6 +2413,12 @@ because "this.handler" is null
     }
 
     private void setInlineFont(RPr rPr, Map<String, PropertyValue> cssMap) {
+        // in case rFonts is still null, try to generate RFonts from font-family style
+        if (cssMap.containsKey("font-family")) {
+            setRFont(cssMap.get("font-family"), rPr);
+            return;
+        }
+
         RFonts rFonts = null;
         for (Map.Entry<String, PropertyValue> entry : cssMap.entrySet()) {
             String styleName = entry.getKey();
@@ -2428,6 +2437,30 @@ because "this.handler" is null
         if (null != rFonts) {
             rPr.setRFonts(rFonts);
         }
+    }
+
+    protected void setRFont(PropertyValue fontFamily, RPr rPr) {
+        if (fontFamily==null) return;
+
+        StringTokenizer st = new StringTokenizer(fontFamily.getCssText(), ",");
+        // font-family:"Century Gothic", Helvetica, Arial, sans-serif;
+        // only use the first one
+        if (st.hasMoreTokens()) {
+            String thisFontFamily = st.nextToken().trim();
+            thisFontFamily = thisFontFamily.replace("'", "");
+            thisFontFamily = thisFontFamily.replace("\"", "");
+            RFonts rFonts = createRFonts(thisFontFamily);
+            rPr.setRFonts(rFonts);
+        }
+    }
+
+    private RFonts createRFonts(String font) {
+        RFonts rFonts = Context.getWmlObjectFactory().createRFonts();
+        rFonts.setAscii(font);
+        rFonts.setHAnsi(font);
+        rFonts.setEastAsia(font);
+        rFonts.setCs(font);
+        return rFonts;
     }
 
     private void setFontField(RFonts rFonts, String fieldName, String value) throws IllegalAccessException {

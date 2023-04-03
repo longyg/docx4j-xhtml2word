@@ -10,32 +10,10 @@ import org.docx4j.XmlUtils;
 import org.docx4j.convert.in.xhtml.XHTMLImporterImpl.TableProperties;
 import org.docx4j.jaxb.Context;
 import org.docx4j.model.properties.table.tr.TrHeight;
-import org.docx4j.wml.CTBorder;
-import org.docx4j.wml.CTHeight;
-import org.docx4j.wml.CTShd;
-import org.docx4j.wml.CTTblLayoutType;
+import org.docx4j.wml.*;
 import org.docx4j.wml.CTTblPrBase.TblStyle;
-import org.docx4j.wml.CTVerticalJc;
-import org.docx4j.wml.ContentAccessor;
-import org.docx4j.wml.P;
-import org.docx4j.wml.STBorder;
-import org.docx4j.wml.STTblLayoutType;
-import org.docx4j.wml.STVerticalJc;
-import org.docx4j.wml.Style;
-import org.docx4j.wml.Tbl;
-import org.docx4j.wml.TblBorders;
-import org.docx4j.wml.TblGrid;
-import org.docx4j.wml.TblGridCol;
-import org.docx4j.wml.TblPr;
-import org.docx4j.wml.TblWidth;
-import org.docx4j.wml.Tc;
-import org.docx4j.wml.TcMar;
-import org.docx4j.wml.TcPr;
-import org.docx4j.wml.TcPrInner;
 import org.docx4j.wml.TcPrInner.GridSpan;
 import org.docx4j.wml.TcPrInner.VMerge;
-import org.docx4j.wml.Tr;
-import org.docx4j.wml.TrPr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
@@ -348,6 +326,12 @@ public class TableHelper {
 		
 		// BackgroundColor
 		FSColor fsColor = tcb.getStyle().getBackgroundColor();
+		// ============= enhanced by longyg start ============
+		// if there is no background color set for the cell, we need to set table level background color also if there is
+		if (null == fsColor) {
+			fsColor = tableProperties.getTableBox().getStyle().getBackgroundColor();
+		}
+		// ============= enhanced by longyg end ==============
 		if (fsColor != null
 				&& fsColor instanceof FSRGBColor) {
 				
