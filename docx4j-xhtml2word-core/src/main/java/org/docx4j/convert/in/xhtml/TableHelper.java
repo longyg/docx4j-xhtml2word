@@ -327,9 +327,15 @@ public class TableHelper {
 		// BackgroundColor
 		FSColor fsColor = tcb.getStyle().getBackgroundColor();
 		// ============= enhanced by longyg start ============
-		// if there is no background color set for the cell, we need to set table level background color also if there is
-		if (null == fsColor) {
-			fsColor = tableProperties.getTableBox().getStyle().getBackgroundColor();
+		// if there is no background color set for the cell, we need to try to set row level or table level background color if there is
+		// row level first, if no row level, then table level
+		if (null == fsColor && null != tableProperties) {
+			if (null != tableProperties.getTableRowBox()) {
+				fsColor = tableProperties.getTableRowBox().getStyle().getBackgroundColor();
+			}
+			if (null == fsColor) {
+				fsColor = tableProperties.getTableBox().getStyle().getBackgroundColor();
+			}
 		}
 		// ============= enhanced by longyg end ==============
 		if (fsColor != null

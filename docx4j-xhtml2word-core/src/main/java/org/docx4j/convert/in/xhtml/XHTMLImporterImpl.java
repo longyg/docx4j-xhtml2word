@@ -43,6 +43,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.openhtmltopdf.newtable.TableCellBox;
+import com.openhtmltopdf.newtable.TableRowBox;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBElement;
 import jakarta.xml.bind.JAXBException;
@@ -1240,6 +1241,10 @@ because "this.handler" is null
                 this.contentContextStack.peek().getContent().add(tr);
                 pushBlockStack(tr);
                 mustPop = true;
+
+                if (null != tableProperties) {
+                    tableProperties.setTableRowBox((com.openhtmltopdf.newtable.TableRowBox) box);
+                }
 
                 tableHelper.setupTrPr((com.openhtmltopdf.newtable.TableRowBox) box, tr); // does nothing at present
 
@@ -2916,6 +2921,8 @@ because "this.handler" is null
 
         private TableBox tableBox;
 
+        private TableRowBox tableRowBox;
+
         public TableBox getTableBox() {
             return tableBox;
         }
@@ -2923,6 +2930,14 @@ because "this.handler" is null
         public void setTableBox(TableBox tableBox) {
             this.tableBox = tableBox;
             colPos = tableBox.getColumnPos();
+        }
+
+        public TableRowBox getTableRowBox() {
+            return tableRowBox;
+        }
+
+        public void setTableRowBox(TableRowBox tableRowBox) {
+            this.tableRowBox = tableRowBox;
         }
 
         private int[] colPos;
