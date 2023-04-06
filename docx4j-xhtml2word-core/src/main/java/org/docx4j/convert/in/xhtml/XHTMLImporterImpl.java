@@ -1695,6 +1695,9 @@ because "this.handler" is null
         // we use the block itself and parent's inline styles to create PPr,
         // to avoid generate some extra inline styles which are derived from common styles
         Map<String, PropertyValue> blockCssMap = getStyleHelper().getBlockBoxStyles(blockBox, rootBox);
+        if (getStyleHelper().hasUndefinedClass(blockBox)) {
+            getStyleHelper().addCommonStyle(blockBox, blockCssMap);
+        }
         PPr pPr = Context.getWmlObjectFactory().createPPr();
         populatePPr(pPr, blockBox, rootBox, blockCssMap);
         return pPr;
@@ -1972,6 +1975,13 @@ because "this.handler" is null
             return;
         }
 
+        // handle placeholder if it is and return immediately so that the child box won't be handled unexpectedly
+        Placeholder placeholder = placeholderHelper.checkAndGetPlaceholder(inlineBox);
+        if (null != placeholder) {
+            placeholderHelper.addPlaceholder(getListForRun(), placeholder);
+            return;
+        }
+
         // Doesn't extend box
         Styleable s = inlineBox;
 
@@ -2030,13 +2040,7 @@ because "this.handler" is null
         // ============== customized by longyg start ================
         // we use the inline box itself and parent's inline styles to create RPr,
         // to avoid generate some extra inline styles which are derived from common styles
-        Map<String, PropertyValue> cssMap;
-        if (containingBox instanceof TableCellBox) {
-            // for table cell, it is difference than paragraph, so we still use the original logic currently
-            cssMap = getCascadedProperties(s.getStyle());
-        } else {
-            cssMap = getStyleHelper().getInlineBoxStyles(inlineBox, containingBox);
-        }
+        Map<String, PropertyValue> cssMap = getStyleHelper().getInlineBoxStyles(inlineBox, containingBox);
         // ============== customized by longyg end ==================
 
 
@@ -2044,10 +2048,15 @@ because "this.handler" is null
         P p = this.getCurrentParagraph(true);
         if (p.getPPr() == null) {
             PPr pPr = Context.getWmlObjectFactory().createPPr();
-
-            populatePPr(pPr, s, containingBox, cssMap);  // nb, since the element is likely to be null, this is unlikely to give us a @class; that's why we need to make the p in the enclosing div (or p).
-            //addParagraphProperties( pPr,  s,  cssMap);
             p.setPPr(pPr);
+
+            if (containingBox instanceof TableCellBox) {
+                Map<String, PropertyValue> cellCssMap = getStyleHelper().getTableCellDerivedStyles((TableCellBox) containingBox);
+                populatePPr(pPr, s, containingBox, cellCssMap);
+            } else {
+                populatePPr(pPr, s, containingBox, cssMap);  // nb, since the element is likely to be null, this is unlikely to give us a @class; that's why we need to make the p in the enclosing div (or p).
+                //addParagraphProperties( pPr,  s,  cssMap);
+            }
         }
 
 

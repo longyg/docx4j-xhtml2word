@@ -23,6 +23,13 @@ public class PlaceholderHelper {
     private static final String PREFIX_COLOR = "800080"; // purple
     private static final String BACKGROUND_COLOR = "fef3e5";
 
+    public boolean checkPlaceholderAndAdd(Styleable box, ContentAccessor contentAccessor) {
+        Placeholder placeholder = checkAndGetPlaceholder(box);
+        if (null == placeholder) return false;
+        addPlaceholder(contentAccessor, placeholder);
+        return true;
+    }
+
     public Placeholder checkAndGetPlaceholder(Styleable box) {
         Element element = box.getElement();
         if (null == element) return null;

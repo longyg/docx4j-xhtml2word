@@ -277,4 +277,8 @@ public class DocxRenderer {
 			return false;
 		}
 	}
+
+	public Document getDocument() {
+		return _doc;
+	}
 }
