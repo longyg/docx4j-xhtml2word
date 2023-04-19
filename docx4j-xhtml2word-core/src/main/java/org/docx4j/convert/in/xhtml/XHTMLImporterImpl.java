@@ -72,6 +72,8 @@ import org.docx4j.model.properties.paragraph.AbstractParagraphProperty;
 import org.docx4j.model.properties.paragraph.Indent;
 import org.docx4j.model.properties.run.AbstractRunProperty;
 import org.docx4j.model.properties.run.FontSize;
+import org.docx4j.model.properties.run.Strike;
+import org.docx4j.model.properties.run.Underline;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
@@ -94,6 +96,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.css.CSSPrimitiveValue;
 //import org.w3c.dom.css.CSSPrimitiveValue;
 //import org.w3c.dom.css.CSSValue;
+import org.w3c.dom.css.CSSValue;
 import org.xml.sax.InputSource;
 
 import com.openhtmltopdf.css.constants.CSSName;
@@ -1497,7 +1500,12 @@ because "this.handler" is null
                 for (Object o : ((BlockBox) box).getChildren()) {
                     log.debug("   processing child " + o.getClass().getName());
 
-                    traverse((Box) o, box, rootBox, tableProperties);
+                    if (box instanceof TableCellBox) {
+                        // If parent is table cell, then the root box is the box itself
+                        traverse((Box) o, box, (Box) o, tableProperties);
+                    } else {
+                        traverse((Box) o, box, rootBox, tableProperties);
+                    }
                     log.debug(".. processed child " + o.getClass().getName());
                 }
                 break;
@@ -2735,6 +2743,20 @@ because "this.handler" is null
         return paddingI;
     }
 
+    private void addTextDecorationProperty(RPr rPr, CSSValue value) {
+        String cssText = value.getCssText();
+        if (cssText.contains("line-through")) {
+            PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, "line-through", "line-through");
+            Strike strike = new Strike(new DomCssValueAdaptor(val));
+            strike.set(rPr);
+        }
+        if (cssText.contains("underline")) {
+            cssText = cssText.replaceAll("line-through", "").trim();
+            PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, cssText, cssText);
+            Underline underline = new Underline(new DomCssValueAdaptor(val));
+            underline.set(rPr);
+        }
+    }
 
     private void addRunProperties(RPr rPr, Map cssMap) {
 
@@ -2754,6 +2776,13 @@ because "this.handler" is null
 
             String cssName = (String) o;
             PropertyValue cssValue = (PropertyValue) cssMap.get(cssName);
+
+            // @Fixed by longyg @2023.4.18:
+            // for text-decoration, handle it separately, because it may contain strike and underline
+            if (cssName.equals("text-decoration")) {
+                addTextDecorationProperty(rPr, new DomCssValueAdaptor(cssValue));
+                continue;
+            }
 
             Property runProp = PropertyFactory.createPropertyFromCssName(cssName, new DomCssValueAdaptor(cssValue));
 

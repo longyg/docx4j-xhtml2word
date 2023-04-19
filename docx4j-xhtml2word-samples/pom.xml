@@ -79,7 +79,7 @@
         <!--  choose a docx4j-JAXB implementation, one ONLY of the 2 following :-->
 
         <dependency>
-            <groupId>org.docx4j</groupId>
+            <groupId>io.github.longyg</groupId>
             <artifactId>docx4j-JAXB-ReferenceImpl</artifactId>
             <version>${version.docx4j}</version>
         </dependency>
@@ -116,7 +116,7 @@
         <dependency>
             <groupId>org.docx4j</groupId>
             <artifactId>docx4j-samples-resources</artifactId>
-            <version>${version.docx4j}</version>
+            <version>11.4.9</version>
         </dependency>
 
 

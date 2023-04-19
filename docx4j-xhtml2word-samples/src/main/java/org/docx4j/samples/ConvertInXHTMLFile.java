@@ -63,8 +63,9 @@ public class ConvertInXHTMLFile {
     public static void main(String[] args) throws Exception {
 
 		Docx4jProperties.setProperty("docx4j.model.properties.PropertyFactory.createPropertyFromCssName.background-color.useHighlightInRPr", false);
-    	
-        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/test6.html";
+		Docx4jProperties.setProperty("docx4j.Convert.Out.HTML.OutputMethodXML", true);
+
+        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/1.docx.html";
         
      // Images: provide correct baseURL
     	String baseURL = "file:///bvols/@git/repos/docx4j-ImportXHTML/sample-docs/docx/sample-docxv2.docx_files";    	

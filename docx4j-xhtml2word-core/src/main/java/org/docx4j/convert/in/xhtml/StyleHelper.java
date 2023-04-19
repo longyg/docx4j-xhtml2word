@@ -36,6 +36,7 @@ public class StyleHelper {
     private UserAgentCallback uac;
 
     private static final String WHITE_SPACE = "white-space";
+    private static final String TEXT_DECORATION = "text-decoration";
     private static final String PRE_WRAP = "pre-wrap";
     private static final String FONT_FAMILY = "font-family";
     private static final List<String> TABLE_CELL_DERIVED_STYLES = List.of("text-align");
@@ -230,14 +231,35 @@ public class StyleHelper {
                 StylesheetInfo.AUTHOR, element.getAttribute("style"));
         ruleset.getPropertyDeclarations().forEach(pd -> {
             String cssName = pd.getCSSName().toString();
-            // white-space and font styles are handled separately, so do not add it
-//            if ((WHITE_SPACE.equals(cssName) &&
-//                    PRE_WRAP.equals(pd.getValue().getCssText())) ||
-//                    cssName.contains(FONT_FAMILY)) return;
             styles.put(cssName, (PropertyValue) pd.getValue());
         });
+        addTextDecorationStyle(styles, element);
         addFontStyle(styles, element);
         return styles;
+    }
+
+    /**
+     * For text-decoration with multiple values, the underling library is not able to parse.
+     * So here we parse it by ourselves.
+     */
+    private void addTextDecorationStyle(Map<String, PropertyValue> styles, Element element) {
+        String style = element.getAttribute("style");
+        if (!style.contains(TEXT_DECORATION)) return;
+
+        int startIndex = style.indexOf(TEXT_DECORATION);
+        int endIndex = style.length();
+        int semicolonIndex = style.indexOf(";", startIndex);
+        if (semicolonIndex > -1) {
+            endIndex = semicolonIndex;
+        }
+        String td = style.substring(startIndex, endIndex);
+        String tdValue = td.substring(td.indexOf(":")+1).trim();
+        String[] values = tdValue.split("\\s+");
+        // if there is only one value, it is already parsed by underling library, so we don't parse it
+        if (values.length == 1) return;
+
+        PropertyValue val = new PropertyValue(org.w3c.dom.css.CSSPrimitiveValue.CSS_STRING, tdValue, tdValue);
+        styles.put(TEXT_DECORATION, val);
     }
 
     private void addFontStyle(Map<String, PropertyValue> styles, Element element) {
