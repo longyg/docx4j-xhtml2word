@@ -1772,6 +1772,7 @@ because "this.handler" is null
                 } else if (blockBox instanceof BlockBox) {
                     cssClass = getStyleHelper().getBlockBoxPrimaryClass((Box) blockBox, rootBox);
                 }
+                // =========================end===============================
         		if (null == cssClass || cssClass.equals("")) {
         			// Since there is no @class value, we might use a heading style
             		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
@@ -2075,7 +2076,9 @@ because "this.handler" is null
             debug = "<" + s.getElement().getNodeName();
 
 //            String cssClass = getClassAttribute(s.getElement());
+            // ================= customized by longyg ==================
             String cssClass = getStyleHelper().getInlineBoxPrimaryClass(inlineBox, containingBox);
+            // ================= end ===================================
             if (cssClass != null) {
                 cssClass = cssClass.trim();
             }
@@ -2272,7 +2275,9 @@ because "this.handler" is null
             log.debug("Processing " + theText);
 
 //            String cssClass = getClassAttribute(s.getElement());
+            // ============= customized by longyg ===================
             String cssClass = getStyleHelper().getInlineBoxPrimaryClass(inlineBox, containgBox);
+            // =============== end ==================================
             if (cssClass != null) {
                 cssClass = cssClass.trim();
             }
@@ -2751,7 +2756,8 @@ because "this.handler" is null
             strike.set(rPr);
         }
         if (cssText.contains("underline")) {
-            cssText = cssText.replaceAll("line-through", "").trim();
+            cssText = cssText.replace("[line-through]", "").trim();
+            cssText = cssText.replace("line-through", "").trim();
             PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, cssText, cssText);
             Underline underline = new Underline(new DomCssValueAdaptor(val));
             underline.set(rPr);

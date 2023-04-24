@@ -12,6 +12,7 @@ import com.openhtmltopdf.css.sheet.StylesheetInfo;
 import com.openhtmltopdf.extend.NamespaceHandler;
 import com.openhtmltopdf.extend.UserAgentCallback;
 import com.openhtmltopdf.layout.Styleable;
+import com.openhtmltopdf.newtable.TableBox;
 import com.openhtmltopdf.newtable.TableCellBox;
 import com.openhtmltopdf.render.BlockBox;
 import com.openhtmltopdf.render.Box;
@@ -39,14 +40,28 @@ public class StyleHelper {
     private static final String TEXT_DECORATION = "text-decoration";
     private static final String PRE_WRAP = "pre-wrap";
     private static final String FONT_FAMILY = "font-family";
-    private static final List<String> TABLE_CELL_DERIVED_STYLES = List.of("text-align");
+    /**
+     * the styles which should be added to the cell content from cell level
+     */
+    private static final List<String> TABLE_CELL_DERIVED_STYLES = List.of("text-align", "margin-top", "margin-bottom");
+    /**
+     * the styles which are not applicable for paragraph in word, they need to be added to run level
+     */
     private static final List<String> PARAGRAPH_INVALID_STYLES = List.of("color", "font-size", "font-weight");
+    /**
+     * the elements which should enable the agent default css
+     */
+    private static final List<String> ENABLE_AGENT_DEFAULT_ELEMENT = List.of("s", "strong", "em", "p", "span");
     private final Map<Node, Map<String, PropertyValue>> elementStyleCache = new ConcurrentHashMap<>();
     private final Map<Styleable, Map<String, PropertyValue>> boxStyleCache = new ConcurrentHashMap<>();
     private final Map<Styleable, String> boxClassCache = new ConcurrentHashMap<>();
     private final Map<Node, String> elementClassCache = new ConcurrentHashMap<>();
 
+    // current document's common css rule set
     private Map<String, List<PropertyDeclaration>> docRuleSets;
+
+    // browser default css rule set
+    private Map<String, List<PropertyDeclaration>> defaultRuleSets;
 
     private static final String EMPTY = "";
 
@@ -86,47 +101,64 @@ public class StyleHelper {
                 .getNamespaceHandler();
     }
 
-    private Map<String, List<PropertyDeclaration>> getDocumentRulesets() {
+    private Map<String, List<PropertyDeclaration>> getDocumentRuleSets() {
         if (null != docRuleSets) return docRuleSets;
+        docRuleSets = getRuleSets(getDocumentStylesheets());
+        return docRuleSets;
+    }
 
-        Map<String, List<PropertyDeclaration>> rulesets = new HashMap<>();
-        Document document = getDocument();
-        if (null == document) return rulesets;
-        StylesheetInfo[] refs = getNamespaceHandler().getStylesheets(document);
+    private Map<String, List<PropertyDeclaration>> getDefaultRuleSets() {
+        if (null != defaultRuleSets) return defaultRuleSets;
+        StylesheetInfo defaultStylesheet = getNamespaceHandler().getDefaultStylesheet(getStylesheetFactory());
+        defaultRuleSets = getRuleSets(Collections.singletonList(defaultStylesheet));
+        return defaultRuleSets;
+    }
 
-        List<StylesheetInfo> infos = new ArrayList<>();
-        int inlineStyleCount = 0;
-        if (refs != null) {
-            for (StylesheetInfo ref : refs) {
-                String uri;
-
-                if (!ref.isInline()) {
-                    uri = getUac().resolveURI(ref.getUri());
-                    ref.setUri(uri);
-                } else {
-                    ref.setUri(getUac().getBaseURL() + "#inline_style_" + (++inlineStyleCount));
-                    Stylesheet sheet = getStylesheetFactory().parse(
-                            new StringReader(ref.getContent()), ref);
-                    ref.setStylesheet(sheet);
-                    ref.setUri(null);
-                }
-            }
-            infos.addAll(Arrays.asList(refs));
-        }
-
+    private Map<String, List<PropertyDeclaration>> getRuleSets(List<StylesheetInfo> infos) {
+        Map<String, List<PropertyDeclaration>> ruleSets = new HashMap<>();
         for (StylesheetInfo info : infos) {
             if (null == info.getStylesheet()) continue;
             for (Object content : info.getStylesheet().getContents()) {
                 if (content instanceof Ruleset) {
                     Ruleset ruleset = (Ruleset) content;
-                    Selector selector = ruleset.getFSSelectors().get(0);
-                    rulesets.putIfAbsent(selector.toString().trim(), ruleset.getPropertyDeclarations());
+                    for (Selector fsSelector : ruleset.getFSSelectors()) {
+                        String selector = fsSelector.toString().trim();
+                        List<PropertyDeclaration> props = ruleSets.getOrDefault(selector, new ArrayList<>());
+                        props.addAll(ruleset.getPropertyDeclarations());
+                        ruleSets.putIfAbsent(selector, props);
+                    }
                 }
             }
         }
+        return ruleSets;
+    }
 
-        docRuleSets = rulesets;
-        return docRuleSets;
+    private List<StylesheetInfo> getDocumentStylesheets() {
+        List<StylesheetInfo> infos = new ArrayList<>();
+        Document document = getDocument();
+        if (null == document) return infos;
+
+        StylesheetInfo[] refs = getNamespaceHandler().getStylesheets(document);
+        if (null == refs) return infos;
+
+        int inlineStyleCount = 0;
+        for (StylesheetInfo ref : refs) {
+            String uri;
+
+            if (!ref.isInline()) {
+                uri = getUac().resolveURI(ref.getUri());
+                ref.setUri(uri);
+            } else {
+                ref.setUri(getUac().getBaseURL() + "#inline_style_" + (++inlineStyleCount));
+                Stylesheet sheet = getStylesheetFactory().parse(
+                        new StringReader(ref.getContent()), ref);
+                ref.setStylesheet(sheet);
+                ref.setUri(null);
+            }
+        }
+        infos.addAll(Arrays.asList(refs));
+
+        return infos;
     }
 
     public Map<String, PropertyValue> getBlockBoxStyles(Box box, Box rootBox) {
@@ -172,13 +204,13 @@ public class StyleHelper {
         }
         if (hasUndefinedClass(containingBox)) {
             String cssClass = containingBox.getElement().getAttribute("class").trim();
-            Map<String, List<PropertyDeclaration>> documentRulesets = getDocumentRulesets();
+            Map<String, List<PropertyDeclaration>> documentRuleSets = getDocumentRuleSets();
             if (!"".equals(cssClass)) {
                 String[] classes = cssClass.split("\\s+");
                 for (String aClass : classes) {
                     String cName = "." + aClass.trim();
-                    if (documentRulesets.containsKey(cName)) {
-                        documentRulesets.get(cName).forEach(pd -> {
+                    if (documentRuleSets.containsKey(cName)) {
+                        documentRuleSets.get(cName).forEach(pd -> {
                             String cssName = pd.getCSSName().toString();
                             if (PARAGRAPH_INVALID_STYLES.contains(cssName) && !styles.containsKey(cssName)) {
                                 styles.put(cssName, (PropertyValue) pd.getValue());
@@ -214,7 +246,13 @@ public class StyleHelper {
 
     private void copyNotExistStyles(Map<String, PropertyValue> source, Map<String, PropertyValue> dest) {
         source.forEach((name, value) -> {
-            if (!dest.containsKey(name)) {
+            // special handling for text-decoration, because in HTML, it needs to be merged from parent
+            if (name.equals(TEXT_DECORATION) && dest.containsKey(TEXT_DECORATION)) {
+                // merge css value
+                String cssText = dest.get(name).getCssText() + " " + source.get(name).getCssText();
+                PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, cssText, cssText);
+                dest.put(name, val);
+            } else if (!dest.containsKey(name)) {
                 dest.put(name, value);
             }
         });
@@ -224,18 +262,35 @@ public class StyleHelper {
         return getElementStyles(box.getElement());
     }
 
+    private void addStylesFromRuleSet(Map<String, PropertyValue> styles, Ruleset ruleset) {
+        if (null == ruleset) return;
+        ruleset.getPropertyDeclarations().forEach(pd -> {
+            String cssName = pd.getCSSName().toString();
+            if (!styles.containsKey(cssName)) {
+                styles.put(cssName, (PropertyValue) pd.getValue());
+            }
+        });
+    }
+
     private Map<String, PropertyValue> getElementStyles(Element element) {
         Map<String, PropertyValue> styles = new HashMap<>();
         if (null == element) return styles;
-        Ruleset ruleset = getStylesheetFactory().parseStyleDeclaration(
-                StylesheetInfo.AUTHOR, element.getAttribute("style"));
-        ruleset.getPropertyDeclarations().forEach(pd -> {
-            String cssName = pd.getCSSName().toString();
-            styles.put(cssName, (PropertyValue) pd.getValue());
-        });
+        String styleText = element.getAttribute("style");
+        if (!styleText.isEmpty()) {
+            Ruleset ruleset = getStylesheetFactory().parseStyleDeclaration(StylesheetInfo.AUTHOR, styleText);
+            addStylesFromRuleSet(styles, ruleset);
+        }
         addTextDecorationStyle(styles, element);
         addFontStyle(styles, element);
+        addAgentDefaultStyle(styles, element);
         return styles;
+    }
+
+    private void addAgentDefaultStyle(Map<String, PropertyValue> styles, Element element) {
+        String name = element.getNodeName();
+        if (ENABLE_AGENT_DEFAULT_ELEMENT.contains(name)) {
+            addStyleFromRuleSets(styles, getDefaultRuleSets(), name);
+        }
     }
 
     /**
@@ -253,7 +308,7 @@ public class StyleHelper {
             endIndex = semicolonIndex;
         }
         String td = style.substring(startIndex, endIndex);
-        String tdValue = td.substring(td.indexOf(":")+1).trim();
+        String tdValue = td.substring(td.indexOf(":") + 1).trim();
         String[] values = tdValue.split("\\s+");
         // if there is only one value, it is already parsed by underling library, so we don't parse it
         if (values.length == 1) return;
@@ -350,23 +405,23 @@ public class StyleHelper {
         Element element = blockBox.getElement();
         if (null == element) return;
         String cssClass = element.getAttribute("class").trim();
-        Map<String, List<PropertyDeclaration>> documentRulesets = getDocumentRulesets();
+        Map<String, List<PropertyDeclaration>> documentRulesets = getDocumentRuleSets();
         if (!"".equals(cssClass)) {
             String[] classes = cssClass.split("\\s+");
             for (String aClass : classes) {
-                String cName = "." + aClass.trim();
-                addClassStyle(blockCssMap, documentRulesets, cName);
+                String selector = "." + aClass.trim();
+                addStyleFromRuleSets(blockCssMap, documentRulesets, selector);
             }
         }
     }
 
-    private void addClassStyle(Map<String, PropertyValue> blockCssMap, Map<String,
-            List<PropertyDeclaration>> documentRulesets, String className) {
-        if (!documentRulesets.containsKey(className)) return;
-        documentRulesets.get(className).forEach(pd -> {
+    private void addStyleFromRuleSets(Map<String, PropertyValue> styles, Map<String,
+            List<PropertyDeclaration>> ruleSets, String selector) {
+        if (!ruleSets.containsKey(selector)) return;
+        ruleSets.get(selector).forEach(pd -> {
             String cssName = pd.getCSSName().toString();
-            if (!blockCssMap.containsKey(cssName)) {
-                blockCssMap.put(cssName, (PropertyValue) pd.getValue());
+            if (!styles.containsKey(cssName)) {
+                styles.put(cssName, (PropertyValue) pd.getValue());
             }
         });
     }
@@ -394,6 +449,26 @@ public class StyleHelper {
                 result.put(k, v);
             }
         });
+        addTableDefaultStyles(tableCellBox, result);
         return result;
+    }
+
+    private void addTableDefaultStyles(Box box, Map<String, PropertyValue> styles) {
+        if (null == box) return;
+        Box parent = box.getParent();
+        if (parent instanceof TableBox) {
+            String name = parent.getElement().getNodeName();
+            List<PropertyDeclaration> propertyDeclarations = getDefaultRuleSets().get(name);
+            if (null != propertyDeclarations) {
+                propertyDeclarations.forEach(pd -> {
+                    String cssName = pd.getCSSName().toString();
+                    if (TABLE_CELL_DERIVED_STYLES.contains(cssName) && !styles.containsKey(cssName)) {
+                        styles.put(cssName, (PropertyValue) pd.getValue());
+                    }
+                });
+            }
+        } else {
+            addTableDefaultStyles(parent, styles);
+        }
     }
 }

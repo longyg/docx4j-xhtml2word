@@ -33,7 +33,6 @@ import org.docx4j.XmlUtils;
 import org.docx4j.convert.in.xhtml.XHTMLImporterImpl;
 import org.docx4j.jaxb.Context;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
-import org.docx4j.openpackaging.parts.WordprocessingML.NumberingDefinitionsPart;
 import org.docx4j.wml.RFonts;
 
 import java.io.File;
@@ -64,8 +63,9 @@ public class ConvertInXHTMLFile {
 
 		Docx4jProperties.setProperty("docx4j.model.properties.PropertyFactory.createPropertyFromCssName.background-color.useHighlightInRPr", false);
 		Docx4jProperties.setProperty("docx4j.Convert.Out.HTML.OutputMethodXML", true);
+		Docx4jProperties.setProperty("docx4j.openpackaging.parts.WordprocessingML.StyleDefinitionsPart.DefaultStyles", "default-styles.xml");
 
-        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/1.docx.html";
+        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/table2.html";
         
      // Images: provide correct baseURL
     	String baseURL = "file:///bvols/@git/repos/docx4j-ImportXHTML/sample-docs/docx/sample-docxv2.docx_files";    	
@@ -92,15 +92,15 @@ public class ConvertInXHTMLFile {
         XHTMLImporterImpl.addFontMapping("Century Gothic", rfonts);
         
         // Create an empty docx package
-//		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.createPackage();
+		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.createPackage();
 //		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new File(System.getProperty("user.dir") + "/styled.docx"));
 
-		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new File(System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/test1.docx"));
-		wordMLPackage.getMainDocumentPart().getContent().clear();
+//		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new File(System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/test1.docx"));
+//		wordMLPackage.getMainDocumentPart().getContent().clear();
 		
-		NumberingDefinitionsPart ndp = new NumberingDefinitionsPart();
-		wordMLPackage.getMainDocumentPart().addTargetPart(ndp);
-		ndp.unmarshalDefaultNumbering();		
+//		NumberingDefinitionsPart ndp = new NumberingDefinitionsPart();
+//		wordMLPackage.getMainDocumentPart().addTargetPart(ndp);
+//		ndp.unmarshalDefaultNumbering();
 					
 		// Convert the XHTML, and add it into the empty docx we made
         XHTMLImporterImpl XHTMLImporter = new XHTMLImporterImpl(wordMLPackage);
