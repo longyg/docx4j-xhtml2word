@@ -7,12 +7,23 @@ import com.openhtmltopdf.css.style.CalculatedStyle;
 import com.openhtmltopdf.css.style.DerivedValue;
 import com.openhtmltopdf.css.style.FSDerivedValue;
 import com.openhtmltopdf.css.style.derived.*;
+import org.docx4j.convert.in.xhtml.PPrCleanser;
+import org.docx4j.convert.in.xhtml.RPrCleanser;
+import org.docx4j.convert.in.xhtml.StyleHelper;
+import org.docx4j.model.properties.Property;
+import org.docx4j.model.properties.run.Bold;
+import org.docx4j.model.properties.run.Italics;
+import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.wml.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.css.CSSPrimitiveValue;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+
+import static org.docx4j.convert.in.xhtml.utils.Constants.*;
 
 /**
  * @author longyg
@@ -115,6 +126,109 @@ public class Utils {
             return ((LengthValue) val).getLengthPrimitiveType();
         } else {
             throw new RuntimeException("Unexpected type " + val.getClass().getName());
+        }
+    }
+
+    public static boolean colorEqual(Color color1, Color color2) {
+        if (color1 == color2) return true;
+        if (color1 != null && color2 != null) {
+            String val1 = color1.getVal();
+            String val2 = color2.getVal();
+            if (Objects.equals(val1, val2)) return true;
+            if (val1 != null) {
+                return val1.equalsIgnoreCase(val2);
+            }
+        }
+        return false;
+    }
+
+    public static boolean isBoldFalse(Property prop) {
+        if (prop instanceof Bold) {
+            Bold bold = (Bold) prop;
+            return isFalseBdt(bold.getObject());
+        }
+        return false;
+    }
+
+    public static boolean isItalicsFalse(Property prop) {
+        if (prop instanceof Italics) {
+            Italics italics = (Italics) prop;
+            return isFalseBdt(italics.getObject());
+        }
+        return false;
+    }
+
+    public static boolean isFalseBdt(Object bdtObj) {
+        if (bdtObj instanceof BooleanDefaultTrue) {
+            BooleanDefaultTrue bdt = (BooleanDefaultTrue) bdtObj;
+            return !bdt.isVal();
+        }
+        return false;
+    }
+
+    public static void handleCssMap(Map<String, PropertyValue> cssMap, Map<String, PropertyValue> selfCssMap) {
+        cssMap.remove(FONT_FAMILY);
+        if (selfCssMap.containsKey(FONT_FAMILY)) {
+            cssMap.put(FONT_FAMILY, selfCssMap.get(FONT_FAMILY));
+        }
+
+        for (String key : selfCssMap.keySet()) {
+            if (StyleHelper.isFontStyle(key)) {
+                cssMap.put(key, selfCssMap.get(key));
+            }
+        }
+        if (selfCssMap.containsKey(TEXT_DECORATION)) {
+            cssMap.put(TEXT_DECORATION, selfCssMap.get(TEXT_DECORATION));
+        }
+        if (selfCssMap.containsKey(BACKGROUND_COLOR)) {
+            cssMap.put(BACKGROUND_COLOR, selfCssMap.get(BACKGROUND_COLOR));
+        }
+    }
+
+    public static void removePRedundant(WordprocessingMLPackage wordMLPackage, PPr pPr) {
+        Style defaultParagraphStyle = wordMLPackage.getMainDocumentPart().getStyleDefinitionsPart().getDefaultParagraphStyle();
+        if (null != defaultParagraphStyle) {
+            PPr defaultPPr = defaultParagraphStyle.getPPr();
+            if (null != defaultPPr) {
+                PPrCleanser.removeRedundantProperties(defaultPPr, pPr);
+            }
+        }
+        DocDefaults docDefaults = wordMLPackage.getMainDocumentPart().getStyleDefinitionsPart().getJaxbElement().getDocDefaults();
+        if (null != docDefaults) {
+            DocDefaults.PPrDefault pPrDefault = docDefaults.getPPrDefault();
+            if (null != pPrDefault) {
+                PPr docDefaultPPr = pPrDefault.getPPr();
+                if (null != docDefaultPPr) {
+                    PPrCleanser.removeRedundantProperties(docDefaultPPr, pPr);
+                }
+            }
+        }
+    }
+
+    public static void removeRunRedundant(WordprocessingMLPackage wordMLPackage, RPr rPr) {
+        Style defaultParagraphStyle = wordMLPackage.getMainDocumentPart().getStyleDefinitionsPart().getDefaultParagraphStyle();
+        if (null != defaultParagraphStyle) {
+            RPr defaultRPr = defaultParagraphStyle.getRPr();
+            if (null != defaultRPr) {
+                RPrCleanser.removeRedundantProperties(defaultRPr, rPr);
+            }
+        }
+        Style defaultCharacterStyle = wordMLPackage.getMainDocumentPart().getStyleDefinitionsPart().getDefaultCharacterStyle();
+        if (null != defaultCharacterStyle) {
+            RPr defaultCRPr = defaultCharacterStyle.getRPr();
+            if (null != defaultCRPr) {
+                RPrCleanser.removeRedundantProperties(defaultCRPr, rPr);
+            }
+        }
+        DocDefaults docDefaults = wordMLPackage.getMainDocumentPart().getStyleDefinitionsPart().getJaxbElement().getDocDefaults();
+        if (null != docDefaults) {
+            DocDefaults.RPrDefault rPrDefault = docDefaults.getRPrDefault();
+            if (null != rPrDefault) {
+                RPr docDefaultRPr = rPrDefault.getRPr();
+                if (null != docDefaultRPr) {
+                    RPrCleanser.removeRedundantProperties(docDefaultRPr, rPr);
+                }
+            }
         }
     }
 }

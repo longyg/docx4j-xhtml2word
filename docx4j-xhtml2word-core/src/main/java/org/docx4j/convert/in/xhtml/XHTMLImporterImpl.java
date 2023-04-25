@@ -62,6 +62,8 @@ import org.docx4j.Docx4jProperties;
 import org.docx4j.UnitsOfMeasurement;
 import org.docx4j.XmlUtils;
 import org.docx4j.convert.in.xhtml.renderer.DocxRenderer;
+import org.docx4j.convert.in.xhtml.utils.Constants;
+import org.docx4j.convert.in.xhtml.utils.Utils;
 import org.docx4j.convert.out.html.HtmlCssHelper;
 import org.docx4j.jaxb.Context;
 import org.docx4j.math.CTOMathPara;
@@ -70,10 +72,7 @@ import org.docx4j.model.properties.Property;
 import org.docx4j.model.properties.PropertyFactory;
 import org.docx4j.model.properties.paragraph.AbstractParagraphProperty;
 import org.docx4j.model.properties.paragraph.Indent;
-import org.docx4j.model.properties.run.AbstractRunProperty;
-import org.docx4j.model.properties.run.FontSize;
-import org.docx4j.model.properties.run.Strike;
-import org.docx4j.model.properties.run.Underline;
+import org.docx4j.model.properties.run.*;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
@@ -119,6 +118,9 @@ import com.openhtmltopdf.render.BlockBox;
 import com.openhtmltopdf.render.Box;
 import com.openhtmltopdf.render.InlineBox;
 import com.openhtmltopdf.resource.XMLResource;
+
+import static org.docx4j.convert.in.xhtml.utils.Constants.FONT_FAMILY;
+import static org.docx4j.convert.in.xhtml.utils.Constants.TEXT_DECORATION;
 
 /**
  * Convert XHTML + CSS to WordML content.  Can convert an entire document,
@@ -1048,6 +1050,12 @@ because "this.handler" is null
 
             //Map cssMap = styleReference.getCascadedPropertiesMap(e);
             Map<String, PropertyValue> cssMap = getCascadedProperties(box.getStyle());
+            // ============== customized by longyg start ================
+            // we use the inline box itself and parent's inline styles to create RPr,
+            // to avoid generate some extra inline styles which are derived from common styles
+            Map<String, PropertyValue> selfCssMap = getStyleHelper().getBlockBoxStyles(blockBox, rootBox);
+            Utils.handleCssMap(cssMap, selfCssMap);
+            // ============== customized by longyg end ==================
         	
         	/* Sometimes, when it is display: inline, the following is not set:
             	CSSValue cssValue = (CSSValue)cssMap.get("display");
@@ -1702,12 +1710,14 @@ because "this.handler" is null
         // ========== customized by longyg ==================
         // we use the block itself and parent's inline styles to create PPr,
         // to avoid generate some extra inline styles which are derived from common styles
+        /*
         Map<String, PropertyValue> blockCssMap = getStyleHelper().getBlockBoxStyles(blockBox, rootBox);
         if (getStyleHelper().hasUndefinedClass(blockBox)) {
             getStyleHelper().addCommonStyle(blockBox, blockCssMap);
         }
+         */
         PPr pPr = Context.getWmlObjectFactory().createPPr();
-        populatePPr(pPr, blockBox, rootBox, blockCssMap);
+        populatePPr(pPr, blockBox, rootBox, cssMap);
         return pPr;
     }
 
@@ -2043,13 +2053,14 @@ because "this.handler" is null
 
         }
 
-//        Map<String, PropertyValue> cssMap = getCascadedProperties(s.getStyle());
+        Map<String, PropertyValue> cssMap = getCascadedProperties(s.getStyle());
 //        Map cssMap = styleReference.getCascadedPropertiesMap(s.getElement());
 
         // ============== customized by longyg start ================
         // we use the inline box itself and parent's inline styles to create RPr,
         // to avoid generate some extra inline styles which are derived from common styles
-        Map<String, PropertyValue> cssMap = getStyleHelper().getInlineBoxStyles(inlineBox, containingBox);
+        Map<String, PropertyValue> selfCssMap = getStyleHelper().getInlineBoxStyles(inlineBox, containingBox);
+        Utils.handleCssMap(cssMap, selfCssMap);
         // ============== customized by longyg end ==================
 
 
@@ -2059,13 +2070,13 @@ because "this.handler" is null
             PPr pPr = Context.getWmlObjectFactory().createPPr();
             p.setPPr(pPr);
 
-            if (containingBox instanceof TableCellBox) {
-                Map<String, PropertyValue> cellCssMap = getStyleHelper().getTableCellDerivedStyles((TableCellBox) containingBox);
-                populatePPr(pPr, s, containingBox, cellCssMap);
-            } else {
+//            if (containingBox instanceof TableCellBox) {
+//                Map<String, PropertyValue> cellCssMap = getStyleHelper().getTableCellDerivedStyles((TableCellBox) containingBox);
+//                populatePPr(pPr, s, containingBox, cellCssMap);
+//            } else {
                 populatePPr(pPr, s, containingBox, cssMap);  // nb, since the element is likely to be null, this is unlikely to give us a @class; that's why we need to make the p in the enclosing div (or p).
                 //addParagraphProperties( pPr,  s,  cssMap);
-            }
+//            }
         }
 
 
@@ -2646,18 +2657,22 @@ because "this.handler" is null
         // simply duplicates something which is already in the paragraph style,
         // since such direct formatting is probably not the author's intent,
         // and makes the document less maintainable
-//        PPr stylePPr = null;
-//        // TODO: take numbering pPr into account here (see above)
-//        PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
-//        if (this.getCurrentParagraph(false).getPPr() != null
-//                && this.getCurrentParagraph(false).getPPr().getPStyle() != null) {
-//            // that's only be true for paragraphFormatting = FormattingOption.CLASS_PLUS_OTHER;
-//            // (we never get here for the other options)
-//
-//            String styleId = this.getCurrentParagraph(false).getPPr().getPStyle().getVal();
-//            stylePPr = propertyResolver.getEffectivePPr(styleId);
-//            PPrCleanser.removeRedundantProperties(stylePPr, pPr);
-//        }
+        PPr stylePPr = null;
+        // TODO: take numbering pPr into account here (see above)
+        PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
+        if (this.getCurrentParagraph(false).getPPr() != null
+                && this.getCurrentParagraph(false).getPPr().getPStyle() != null) {
+            // that's only be true for paragraphFormatting = FormattingOption.CLASS_PLUS_OTHER;
+            // (we never get here for the other options)
+
+            String styleId = this.getCurrentParagraph(false).getPPr().getPStyle().getVal();
+            stylePPr = propertyResolver.getEffectivePPr(styleId);
+            PPrCleanser.removeRedundantProperties(stylePPr, pPr);
+        }
+
+        // Fixed by longyg @2023.4.25
+        // we need also remove redundant properties for default paragraph and doc default styles.
+        Utils.removePRedundant(wordMLPackage, pPr);
 
         // TODO: cleansing in table context
 
@@ -2806,7 +2821,6 @@ because "this.handler" is null
         // simply duplicates something which is already in the paragraph style,
         // since such direct formatting is probably not the author's intent,
         // and makes the document less maintainable
-        /**
         RPr styleRPr = null;
         PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
         if (pStyleId != null) {
@@ -2825,7 +2839,10 @@ because "this.handler" is null
             styleRPr = propertyResolver.getEffectiveRPr(styleId);
             RPrCleanser.removeRedundantProperties(styleRPr, rPr);
         }
-         */
+
+        // Fixed by longyg @2023.4.25:
+        // we also need to remove redundant properties which are defined for default paragraph and default character and doc defaults
+        Utils.removeRunRedundant(wordMLPackage, rPr);
 
         // TODO: cleansing in table context
 

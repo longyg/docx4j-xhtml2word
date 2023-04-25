@@ -1,5 +1,6 @@
 package org.docx4j.convert.in.xhtml;
 
+import org.docx4j.convert.in.xhtml.utils.Utils;
 import org.docx4j.model.styles.StyleUtil;
 import org.docx4j.wml.RPr;
 
@@ -18,7 +19,7 @@ public class RPrCleanser {
 		}
 
 		// Font color
-		if ( StyleUtil.areEqual(pLevelRPr.getColor(), runPr.getColor())) {
+		if (Utils.colorEqual(pLevelRPr.getColor(), runPr.getColor())) {
 			runPr.setColor(null);
 		}
 		// Font size
