@@ -132,14 +132,16 @@ public class PPrCleanser {
 		}
 		// don't want <w:spacing/>
 		Spacing directPrSpacing = directPr.getSpacing();
-		if (directPrSpacing.getAfter()==null
-				&& directPrSpacing.getAfterLines()==null
-				&& directPrSpacing.getBefore()==null
-				&& directPrSpacing.getBeforeLines()==null
-				&& directPrSpacing.getLine()==null
+		if (null != directPrSpacing) {
+			if (directPrSpacing.getAfter() == null
+					&& directPrSpacing.getAfterLines() == null
+					&& directPrSpacing.getBefore() == null
+					&& directPrSpacing.getBeforeLines() == null
+					&& directPrSpacing.getLine() == null
 				// && directPrSpacing.getLineRule() 
-				) {
-			directPr.setSpacing(null);
+			) {
+				directPr.setSpacing(null);
+			}
 		}
 		
 		
