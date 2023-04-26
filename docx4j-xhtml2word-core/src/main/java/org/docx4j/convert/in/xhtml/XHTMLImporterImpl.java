@@ -195,8 +195,12 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 
     }
 
+    private void setSystemProperties() {
+        System.setProperty("xr.css.user-agent-default-css", "/mycss/");
+    }
 
     public XHTMLImporterImpl(WordprocessingMLPackage wordMLPackage) {
+        setSystemProperties();
 
         displayFormattingOptionSettings();
 
@@ -2660,6 +2664,14 @@ because "this.handler" is null
         PPr stylePPr = null;
         // TODO: take numbering pPr into account here (see above)
         PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
+        // Fixed by longyg @2023.4.26:
+        // should directly use current pPr to get the pStyle, because the pPr may not be set to current p yet.
+        if (pPr.getPStyle() != null) {
+            String styleId = pPr.getPStyle().getVal();
+            stylePPr = propertyResolver.getEffectivePPr(styleId);
+            PPrCleanser.removeRedundantProperties(stylePPr, pPr);
+        }
+        /*
         if (this.getCurrentParagraph(false).getPPr() != null
                 && this.getCurrentParagraph(false).getPPr().getPStyle() != null) {
             // that's only be true for paragraphFormatting = FormattingOption.CLASS_PLUS_OTHER;
@@ -2669,6 +2681,7 @@ because "this.handler" is null
             stylePPr = propertyResolver.getEffectivePPr(styleId);
             PPrCleanser.removeRedundantProperties(stylePPr, pPr);
         }
+        */
 
         // Fixed by longyg @2023.4.25
         // we need also remove redundant properties for default paragraph and doc default styles.

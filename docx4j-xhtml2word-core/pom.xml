@@ -81,6 +81,7 @@
                     <include>xhtmlrenderer.conf</include>
                     <!-- user supplied: -->
                     <!--<include>mml2omml.xsl</include> -->
+                    <include>mycss/*.css</include>
                 </includes>
 
             </resource>

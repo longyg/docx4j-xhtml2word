@@ -65,7 +65,7 @@ public class ConvertInXHTMLFile {
 		Docx4jProperties.setProperty("docx4j.Convert.Out.HTML.OutputMethodXML", true);
 		Docx4jProperties.setProperty("docx4j.openpackaging.parts.WordprocessingML.StyleDefinitionsPart.DefaultStyles", "default-styles.xml");
 
-        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/table2.html";
+        String inputfilepath = System.getProperty("user.dir") + "/docx4j-xhtml2word-samples/sample-docs/xhtml/t/strike.html";
         
      // Images: provide correct baseURL
     	String baseURL = "file:///bvols/@git/repos/docx4j-ImportXHTML/sample-docs/docx/sample-docxv2.docx_files";    	

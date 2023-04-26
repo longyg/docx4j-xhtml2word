@@ -8,7 +8,7 @@
     <version>${revision}</version>
 
     <properties>
-        <revision>1.1.1</revision>
+        <revision>1.1.2</revision>
         <version.docx4j>11.4.10-alpha1</version.docx4j>
         <packaging.type>jar</packaging.type>
         <!-- github server corresponds to entry in ~/.m2/settings.xml -->
