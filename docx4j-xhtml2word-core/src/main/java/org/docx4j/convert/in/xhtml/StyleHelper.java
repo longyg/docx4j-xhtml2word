@@ -110,7 +110,9 @@ public class StyleHelper {
     private Map<String, List<PropertyDeclaration>> getDefaultRuleSets() {
         if (null != defaultRuleSets) return defaultRuleSets;
         StylesheetInfo defaultStylesheet = getNamespaceHandler().getDefaultStylesheet(getStylesheetFactory());
-        defaultRuleSets = getRuleSets(Collections.singletonList(defaultStylesheet));
+        if (null != defaultStylesheet) {
+            defaultRuleSets = getRuleSets(Collections.singletonList(defaultStylesheet));
+        }
         return defaultRuleSets;
     }
 
@@ -417,7 +419,7 @@ public class StyleHelper {
 
     private void addStyleFromRuleSets(Map<String, PropertyValue> styles, Map<String,
             List<PropertyDeclaration>> ruleSets, String selector) {
-        if (!ruleSets.containsKey(selector)) return;
+        if (null == ruleSets || !ruleSets.containsKey(selector)) return;
         ruleSets.get(selector).forEach(pd -> {
             String cssName = pd.getCSSName().toString();
             if (!styles.containsKey(cssName)) {
@@ -454,7 +456,7 @@ public class StyleHelper {
     }
 
     private void addTableDefaultStyles(Box box, Map<String, PropertyValue> styles) {
-        if (null == box) return;
+        if (null == box || null == getDefaultRuleSets()) return;
         Box parent = box.getParent();
         if (parent instanceof TableBox) {
             String name = parent.getElement().getNodeName();
