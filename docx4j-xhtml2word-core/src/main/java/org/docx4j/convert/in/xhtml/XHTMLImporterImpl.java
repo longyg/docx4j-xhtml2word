@@ -2725,9 +2725,8 @@ because "this.handler" is null
 
         Object o = styleable;
 
-        while (o != null
-                && o instanceof BlockBox
-            /* && !(o instanceof com.openhtmltopdf.newtable.TableCellBox) */ //  need to stop if we encounter a table cell?
+        while (o instanceof BlockBox
+                && !(o instanceof TableCellBox)  //  need to stop if we encounter a table cell
         ) {
 
             BlockBox bb = (BlockBox) o;
