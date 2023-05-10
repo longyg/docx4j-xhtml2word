@@ -76,6 +76,7 @@ import org.docx4j.model.properties.run.*;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.openpackaging.parts.Part;
 import org.docx4j.openpackaging.parts.WordprocessingML.NumberingDefinitionsPart;
 import org.docx4j.openpackaging.parts.WordprocessingML.StyleDefinitionsPart;
 import org.docx4j.openpackaging.parts.relationships.Namespaces;
@@ -162,6 +163,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     }
 
     protected WordprocessingMLPackage wordMLPackage;
+    protected Part sourcePart;
     private RelationshipsPart rp;
     private NumberingDefinitionsPart ndp;
 
@@ -197,6 +199,17 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 
     private void setSystemProperties() {
         System.setProperty("xr.css.user-agent-default-css", "/mycss/");
+    }
+
+    // @Fixed by longyg @2023.5.9:
+    // Enhanced Constructor, can specify source part, for example header part.
+    public XHTMLImporterImpl(WordprocessingMLPackage wordMLPackage, Part sourcePart) {
+        this(wordMLPackage);
+        this.sourcePart = sourcePart;
+    }
+
+    public Part getSourcePart() {
+        return sourcePart;
     }
 
     public XHTMLImporterImpl(WordprocessingMLPackage wordMLPackage) {

@@ -9,6 +9,7 @@ import org.docx4j.convert.in.xhtml.renderer.Docx4jUserAgent;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.jaxb.Context;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.openpackaging.parts.Part;
 import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
 import org.docx4j.wml.CTTblCellMar;
 import org.docx4j.wml.CTTblPrBase;
@@ -114,7 +115,10 @@ public class XHTMLImageHandlerDefault implements XHTMLImageHandler {
 				
 				if (imagePart==null) {
 					// Its not cached
-					imagePart = BinaryPartAbstractImage.createImagePart(wordMLPackage, imageBytes);
+					// @Fixed by longyg @2023.5.9:
+					// try to use specified source part, for example header part, instead of main document part.
+					Part sourcePart = importer.getSourcePart() == null ? wordMLPackage.getMainDocumentPart() : importer.getSourcePart();
+					imagePart = BinaryPartAbstractImage.createImagePart(wordMLPackage, sourcePart, imageBytes);
 					if (e.getAttribute("src").startsWith("data:image")) {
 						// don't bother caching
 					} else {
