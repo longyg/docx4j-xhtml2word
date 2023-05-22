@@ -55,14 +55,11 @@ import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamSource;
 
-import org.apache.james.mime4j.parser.ContentHandler;
 import org.apache.james.mime4j.parser.MimeStreamParser;
-import org.apache.james.mime4j.stream.MimeConfig;
 import org.docx4j.Docx4jProperties;
 import org.docx4j.UnitsOfMeasurement;
 import org.docx4j.XmlUtils;
 import org.docx4j.convert.in.xhtml.renderer.DocxRenderer;
-import org.docx4j.convert.in.xhtml.utils.Constants;
 import org.docx4j.convert.in.xhtml.utils.Utils;
 import org.docx4j.convert.out.html.HtmlCssHelper;
 import org.docx4j.jaxb.Context;
@@ -119,9 +116,6 @@ import com.openhtmltopdf.render.BlockBox;
 import com.openhtmltopdf.render.Box;
 import com.openhtmltopdf.render.InlineBox;
 import com.openhtmltopdf.resource.XMLResource;
-
-import static org.docx4j.convert.in.xhtml.utils.Constants.FONT_FAMILY;
-import static org.docx4j.convert.in.xhtml.utils.Constants.TEXT_DECORATION;
 
 /**
  * Convert XHTML + CSS to WordML content.  Can convert an entire document,
@@ -2804,6 +2798,20 @@ because "this.handler" is null
         }
     }
 
+    private void addSmallCapsProperty(RPr rPr, PropertyValue cssValue) {
+        String cssText = cssValue.getCssText();
+        if (cssText.equals("small-caps")) {
+            rPr.setSmallCaps(new BooleanDefaultTrue());
+        }
+    }
+
+    private void addAllCapsProperty(RPr rPr, PropertyValue cssValue) {
+        String cssText = cssValue.getCssText();
+        if (cssText.equals("uppercase")) {
+            rPr.setCaps(new BooleanDefaultTrue());
+        }
+    }
+
     private void addRunProperties(RPr rPr, Map cssMap) {
 
         log.debug("addRunProperties");
@@ -2828,6 +2836,17 @@ because "this.handler" is null
             if (cssName.equals("text-decoration")) {
                 addTextDecorationProperty(rPr, new DomCssValueAdaptor(cssValue));
                 continue;
+            }
+
+            // @Fixed by longyg @2023.5.22
+            // support small caps
+            if (cssName.equals("font-variant")) {
+                addSmallCapsProperty(rPr, cssValue);
+            }
+            // @Fixed by longyg @2023.5.22
+            // support all caps
+            if (cssName.equals("text-transform")) {
+                addAllCapsProperty(rPr, cssValue);
             }
 
             Property runProp = PropertyFactory.createPropertyFromCssName(cssName, new DomCssValueAdaptor(cssValue));

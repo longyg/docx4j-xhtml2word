@@ -179,7 +179,10 @@ public class TableHelper {
     		// <w:tblLayout w:type="fixed"/>
     		CTTblLayoutType tblLayout = Context.getWmlObjectFactory().createCTTblLayoutType();
     		tblLayout.setType(STTblLayoutType.FIXED);
-    		tblPr.setTblLayout(tblLayout);
+			// @Fixed by longyg @2023.5.22
+			// never set table layout as fixed, as the table width was set as auto and zero, the layout must be autofit, so that
+			// the table width would be auto calculated based on page width.
+			// tblPr.setTblLayout(tblLayout);
         }		            	
     }
     
