@@ -9,7 +9,9 @@ public class RPrCleanser {
 	public static void removeRedundantProperties(RPr pLevelRPr, RPr runPr) {
 		
 		// Bold
-		if ( StyleUtil.areEqual(pLevelRPr.getB(), runPr.getB())) {
+		// @Fixed by longyg @2023.5.23:
+		// use customized method to compare bold, both should not null
+		if ( Utils.areEqual(pLevelRPr.getB(), runPr.getB())) {
 			runPr.setB(null);
 		}
 
@@ -19,6 +21,8 @@ public class RPrCleanser {
 		}
 
 		// Font color
+		// @Fixed by longyg @2023.5.11:
+		// use customized method to compare color, ignore case
 		if (Utils.colorEqual(pLevelRPr.getColor(), runPr.getColor())) {
 			runPr.setColor(null);
 		}

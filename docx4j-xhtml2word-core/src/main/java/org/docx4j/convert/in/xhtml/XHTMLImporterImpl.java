@@ -191,6 +191,8 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 
     }
 
+    // @Fixed by longyg @2023.5.9:
+    // set customized agent default css path
     private void setSystemProperties() {
         System.setProperty("xr.css.user-agent-default-css", "/mycss/");
     }
@@ -207,6 +209,8 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     }
 
     public XHTMLImporterImpl(WordprocessingMLPackage wordMLPackage) {
+        // @Fixed by longyg @2023.5.9:
+        // set customized system properties
         setSystemProperties();
 
         displayFormattingOptionSettings();
@@ -228,6 +232,8 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 
         listHelper = new ListHelper(this, ndp);
         tableHelper = new TableHelper(this);
+        // @Fixed by longyg @2023.4.15:
+        // add style helper and placeholder helper
         styleHelper = new StyleHelper(this);
         placeholderHelper = new PlaceholderHelper();
 
@@ -997,6 +1003,8 @@ because "this.handler" is null
         unsetDefaultFontSize();
     }
 
+    // @Fixed by longyg @2023.4.12:
+    // add rootBox parameter for later usage
     private void traverse(Box box, Box parent, Box rootBox, TableProperties tableProperties) throws Docx4JException {
 
         log.debug(box.getClass().getName());
@@ -1012,6 +1020,8 @@ because "this.handler" is null
 
     }
 
+    // @Fixed by longyg @2023.4.12:
+    // add rootBox parameter for later usage
     private void traverseBlockBox(Box box, Box parent, Box rootBox, TableProperties tableProperties) throws Docx4JException {
 
         boolean mustPop = false;
@@ -1061,6 +1071,7 @@ because "this.handler" is null
 
             //Map cssMap = styleReference.getCascadedPropertiesMap(e);
             Map<String, PropertyValue> cssMap = getCascadedProperties(box.getStyle());
+            // @Fixed by longyg @2023.4.24:
             // ============== customized by longyg start ================
             // we use the inline box itself and parent's inline styles to create RPr,
             // to avoid generate some extra inline styles which are derived from common styles
@@ -1519,8 +1530,9 @@ because "this.handler" is null
                 for (Object o : ((BlockBox) box).getChildren()) {
                     log.debug("   processing child " + o.getClass().getName());
 
+                    // @Fixed by longyg @2023.4.18:
+                    // If parent is table cell, then the root box is the box itself
                     if (box instanceof TableCellBox) {
-                        // If parent is table cell, then the root box is the box itself
                         traverse((Box) o, box, (Box) o, tableProperties);
                     } else {
                         traverse((Box) o, box, rootBox, tableProperties);
@@ -1785,6 +1797,7 @@ because "this.handler" is null
         	} else  {
 
 //        		String cssClass = blockBox.getElement().getAttribute("class").trim();
+                // @Fixed by longyg @2023.4.18:
                 // ================ customized by longyg start ===========
                 // get css class from the block box or from it's parent
                 String cssClass = null;
@@ -2066,7 +2079,7 @@ because "this.handler" is null
 
         Map<String, PropertyValue> cssMap = getCascadedProperties(s.getStyle());
 //        Map cssMap = styleReference.getCascadedPropertiesMap(s.getElement());
-
+        // @Fixed by longyg @2023.4.24:
         // ============== customized by longyg start ================
         // we use the inline box itself and parent's inline styles to create RPr,
         // to avoid generate some extra inline styles which are derived from common styles
@@ -2098,7 +2111,9 @@ because "this.handler" is null
             debug = "<" + s.getElement().getNodeName();
 
 //            String cssClass = getClassAttribute(s.getElement());
+            // @Fixed by longyg @2023.4.24:
             // ================= customized by longyg ==================
+            // get the css class from element's class attribute or ancestor's class attribute if any.
             String cssClass = getStyleHelper().getInlineBoxPrimaryClass(inlineBox, containingBox);
             // ================= end ===================================
             if (cssClass != null) {
@@ -2297,7 +2312,9 @@ because "this.handler" is null
             log.debug("Processing " + theText);
 
 //            String cssClass = getClassAttribute(s.getElement());
-            // ============= customized by longyg ===================
+            // @Fixed by longyg @2023.4.24:
+            // ================= customized by longyg ==================
+            // get the css class from element's class attribute or ancestor's class attribute if any.
             String cssClass = getStyleHelper().getInlineBoxPrimaryClass(inlineBox, containgBox);
             // =============== end ==================================
             if (cssClass != null) {
@@ -2671,7 +2688,7 @@ because "this.handler" is null
         PPr stylePPr = null;
         // TODO: take numbering pPr into account here (see above)
         PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
-        // Fixed by longyg @2023.4.26:
+        // @Fixed by longyg @2023.4.26:
         // should directly use current pPr to get the pStyle, because the pPr may not be set to current p yet.
         if (pPr.getPStyle() != null) {
             String styleId = pPr.getPStyle().getVal();
@@ -2690,9 +2707,11 @@ because "this.handler" is null
         }
         */
 
-        // Fixed by longyg @2023.4.25
+        // @Fixed by longyg @2023.4.25
         // we need also remove redundant properties for default paragraph and doc default styles.
-        Utils.removePRedundant(wordMLPackage, pPr);
+        // @Fixed by longyg @2023.5.23:
+        // comment out below line, as we see it will remove Jc wrongly.
+        // Utils.removePRedundant(wordMLPackage, pPr);
 
         // TODO: cleansing in table context
 
@@ -2838,12 +2857,12 @@ because "this.handler" is null
                 continue;
             }
 
-            // @Fixed by longyg @2023.5.22
+            // @Fixed by longyg @2023.5.22:
             // support small caps
             if (cssName.equals("font-variant")) {
                 addSmallCapsProperty(rPr, cssValue);
             }
-            // @Fixed by longyg @2023.5.22
+            // @Fixed by longyg @2023.5.22:
             // support all caps
             if (cssName.equals("text-transform")) {
                 addAllCapsProperty(rPr, cssValue);
@@ -2884,7 +2903,7 @@ because "this.handler" is null
             RPrCleanser.removeRedundantProperties(styleRPr, rPr);
         }
 
-        // Fixed by longyg @2023.4.25:
+        // @Fixed by longyg @2023.4.25:
         // we also need to remove redundant properties which are defined for default paragraph and default character and doc defaults
         Utils.removeRunRedundant(wordMLPackage, rPr);
 

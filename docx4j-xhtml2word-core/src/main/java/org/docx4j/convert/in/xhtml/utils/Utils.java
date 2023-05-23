@@ -142,6 +142,15 @@ public class Utils {
         return false;
     }
 
+    public static boolean areEqual(BooleanDefaultTrue b1,
+                                   BooleanDefaultTrue b2) {
+        if (b1 == b2) return true;
+        if (b1 != null && b2 != null) {
+            return b1.isVal() == b2.isVal();
+        }
+        return false;
+    }
+
     public static boolean isBoldFalse(Property prop) {
         if (prop instanceof Bold) {
             Bold bold = (Bold) prop;

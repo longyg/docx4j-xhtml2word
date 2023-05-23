@@ -118,37 +118,11 @@ public class TableHelper {
             } 
         	
     		
-        } else if (cssTable.getMargin(importer.getRenderer().getLayoutContext()) !=null
-				&& cssTable.getMargin(importer.getRenderer().getLayoutContext()).left()>0) {
-        	
-			log.debug("Calculating TblInd from margin.left: " + cssTable.getMargin(importer.getRenderer().getLayoutContext()).left() );
-    		TblWidth tblInd = Context.getWmlObjectFactory().createTblWidth();
-    		tblInd.setW( BigInteger.valueOf( Math.round(
-    				cssTable.getMargin(importer.getRenderer().getLayoutContext()).left()
-    				)));
-    		tblInd.setType(TblWidth.TYPE_DXA);
-			tblPr.setTblInd(tblInd);
-			
-		} else {
-		
-    		// Indent is zero.  In this case, if the table has borders,
-    		// adjust the indent to align the left border with the left edge of text outside the table
-    		// See http://superuser.com/questions/126451/changing-the-placement-of-the-left-border-of-tables-in-word
-			CTBorder leftBorder = borders.getLeft();
-			if (leftBorder!=null
-					&& leftBorder.getVal()!=null
-					&& leftBorder.getVal()!=STBorder.NONE
-					&& leftBorder.getVal()!=STBorder.NIL) {
-				// set table indent to .08", ie 115 twip
-				// <w:tblInd w:w="115" w:type="dxa"/>
-				// TODO For a wider line, or a line style which is eg double lines, you might need more indent
-				log.debug("applying fix to align left edge of table with text");
-        		TblWidth tblInd = Context.getWmlObjectFactory().createTblWidth();
-        		tblInd.setW( BigInteger.valueOf( 115));
-        		tblInd.setType(TblWidth.TYPE_DXA);
-    			tblPr.setTblInd(tblInd);
-			}
-			
+        } else {
+			// @Fixed by longyg @2023.5.23:
+			// use customized method to set table indent
+			// setupTblIndentWithoutList(cssTable, borders, tblPr);
+			setupTblIndentWithoutList2(cssTable, borders, tblPr);
 		}
 			
 		// <w:tblW w:w="0" w:type="auto"/>
@@ -179,12 +153,78 @@ public class TableHelper {
     		// <w:tblLayout w:type="fixed"/>
     		CTTblLayoutType tblLayout = Context.getWmlObjectFactory().createCTTblLayoutType();
     		tblLayout.setType(STTblLayoutType.FIXED);
-			// @Fixed by longyg @2023.5.22
+			// @Fixed by longyg @2023.5.22:
 			// never set table layout as fixed, as the table width was set as auto and zero, the layout must be autofit, so that
 			// the table width would be auto calculated based on page width.
 			// tblPr.setTblLayout(tblLayout);
         }		            	
     }
+
+	// original implementation
+	private void setupTblIndentWithoutList(TableBox cssTable, TblBorders borders, TblPr tblPr) {
+		if (cssTable.getMargin(importer.getRenderer().getLayoutContext()) !=null
+				&& cssTable.getMargin(importer.getRenderer().getLayoutContext()).left()>0) {
+
+			log.debug("Calculating TblInd from margin.left: " + cssTable.getMargin(importer.getRenderer().getLayoutContext()).left() );
+			TblWidth tblInd = Context.getWmlObjectFactory().createTblWidth();
+			tblInd.setW( BigInteger.valueOf( Math.round(
+					cssTable.getMargin(importer.getRenderer().getLayoutContext()).left()
+			)));
+			tblInd.setType(TblWidth.TYPE_DXA);
+			tblPr.setTblInd(tblInd);
+
+		} else {
+
+			// Indent is zero.  In this case, if the table has borders,
+			// adjust the indent to align the left border with the left edge of text outside the table
+			// See http://superuser.com/questions/126451/changing-the-placement-of-the-left-border-of-tables-in-word
+			CTBorder leftBorder = borders.getLeft();
+			if (leftBorder!=null
+					&& leftBorder.getVal()!=null
+					&& leftBorder.getVal()!=STBorder.NONE
+					&& leftBorder.getVal()!=STBorder.NIL) {
+				// set table indent to .08", ie 115 twip
+				// <w:tblInd w:w="115" w:type="dxa"/>
+				// TODO For a wider line, or a line style which is eg double lines, you might need more indent
+				log.debug("applying fix to align left edge of table with text");
+				TblWidth tblInd = Context.getWmlObjectFactory().createTblWidth();
+				tblInd.setW( BigInteger.valueOf( 115));
+				tblInd.setType(TblWidth.TYPE_DXA);
+				tblPr.setTblInd(tblInd);
+			}
+		}
+	}
+
+	// @Fixed by longyg @2023.5.23:
+	// customized implementation for calculating table indent (i.e., left margin)
+	private void setupTblIndentWithoutList2(TableBox cssTable, TblBorders borders, TblPr tblPr) {
+		int indentation = importer.getAncestorIndentation(cssTable);
+		if (indentation > 0) {
+			TblWidth tblInd = Context.getWmlObjectFactory().createTblWidth();
+			tblInd.setW(BigInteger.valueOf(indentation));
+			tblInd.setType(TblWidth.TYPE_DXA);
+			tblPr.setTblInd(tblInd);
+		} else {
+
+			// Indent is zero.  In this case, if the table has borders,
+			// adjust the indent to align the left border with the left edge of text outside the table
+			// See http://superuser.com/questions/126451/changing-the-placement-of-the-left-border-of-tables-in-word
+			CTBorder leftBorder = borders.getLeft();
+			if (leftBorder!=null
+					&& leftBorder.getVal()!=null
+					&& leftBorder.getVal()!=STBorder.NONE
+					&& leftBorder.getVal()!=STBorder.NIL) {
+				// set table indent to .08", ie 115 twip
+				// <w:tblInd w:w="115" w:type="dxa"/>
+				// TODO For a wider line, or a line style which is eg double lines, you might need more indent
+				log.debug("applying fix to align left edge of table with text");
+				TblWidth tblInd = Context.getWmlObjectFactory().createTblWidth();
+				tblInd.setW( BigInteger.valueOf( 115));
+				tblInd.setType(TblWidth.TYPE_DXA);
+				tblPr.setTblInd(tblInd);
+			}
+		}
+	}
     
     protected void setupTblGrid(TableBox cssTable, Tbl tbl, TableProperties tableProperties) {
     	
@@ -329,6 +369,7 @@ public class TableHelper {
 		
 		// BackgroundColor
 		FSColor fsColor = tcb.getStyle().getBackgroundColor();
+		// @Fixed by longyg @2023.4.23:
 		// ============= enhanced by longyg start ============
 		// if there is no background color set for the cell, we need to try to set row level or table level background color if there is
 		// row level first, if no row level, then table level
