@@ -240,4 +240,16 @@ public class Utils {
             }
         }
     }
+
+    public static String extractStyleValue(String styles, String styleName) {
+        if (!styles.contains(styleName)) return null;
+        int startIndex = styles.indexOf(styleName);
+        int endIndex = styles.length();
+        int semicolonIndex = styles.indexOf(";", startIndex);
+        if (semicolonIndex > -1) {
+            endIndex = semicolonIndex;
+        }
+        String rule = styles.substring(startIndex, endIndex);
+        return rule.substring(rule.indexOf(":") + 1).trim();
+    }
 }

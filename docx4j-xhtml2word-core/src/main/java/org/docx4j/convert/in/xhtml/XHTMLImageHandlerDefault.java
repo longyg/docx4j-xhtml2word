@@ -2,10 +2,15 @@ package org.docx4j.convert.in.xhtml;
 
 import java.text.MessageFormat;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.codec.binary.Base64;
 import org.docx4j.convert.in.xhtml.renderer.Docx4JFSImage;
 import org.docx4j.convert.in.xhtml.renderer.Docx4jUserAgent;
+import org.docx4j.convert.in.xhtml.utils.Utils;
+import org.docx4j.dml.CTTransform2D;
+import org.docx4j.dml.Graphic;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.jaxb.Context;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
@@ -169,6 +174,10 @@ public class XHTMLImageHandlerDefault implements XHTMLImageHandler {
 					 */
 				}
 
+				// @Fixed by longyg @2023.5.25:
+				// consider transform applied to image as well
+				applyTransform(e, inline);
+
 				// Now add the inline in w:p/w:r/w:drawing
 				org.docx4j.wml.R run = Context.getWmlObjectFactory().createR();
 				p.getContent().add(run);
@@ -191,6 +200,42 @@ public class XHTMLImageHandlerDefault implements XHTMLImageHandler {
 			run.getContent().add(text);
 		}
 		
+	}
+
+	private void applyTransform(Element e, Inline inline) {
+		if (null == e || null == inline) return;
+		String style = e.getAttribute("style").trim();
+		String value = Utils.extractStyleValue(style, "transform");
+		if (null == value) return;
+		CTTransform2D xfrm = inline.getGraphic().getGraphicData().getPic().getSpPr().getXfrm();
+		if (null == xfrm) return;
+
+		if (value.contains("scaleX(-1)")) {
+			xfrm.setFlipH(true);
+		}
+		if (value.contains("scaleY(-1)")) {
+			xfrm.setFlipV(true);
+		}
+		int degree = getTransformDegree(value);
+		if (degree > 0) {
+			xfrm.setRot(degree * 60000);
+		}
+	}
+
+	private int getTransformDegree(String value) {
+		if (!value.contains("rotate")) return 0;
+
+		Pattern pattern = Pattern.compile(".*rotate\\((\\d+)deg\\).*");
+		Matcher matcher = pattern.matcher(value);
+		if (matcher.matches()) {
+			String group = matcher.group(1);
+			try {
+				return Integer.parseInt(group);
+			} catch (NumberFormatException e1) {
+				return 0;
+			}
+		}
+		return 0;
 	}
 	
     /**

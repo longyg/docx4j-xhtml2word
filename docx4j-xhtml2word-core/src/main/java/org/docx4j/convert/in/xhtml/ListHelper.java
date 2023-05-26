@@ -189,12 +189,16 @@ public class ListHelper {
 	private void pushListItemStateStack() {
 		
 		// Init with current concrete list
-		Numbering.Num currentConcreteList=null;
-		if (peekListItemStateStack()!=null) {
-			currentConcreteList = peekListItemStateStack().concreteList;
-		}
+
+		// @Fixed by longyg @2023.5.26:
+		// do not use the previous concreteList to the new listItemState, it will cause continued numbering for different <ol> if at same level.
+		// we should make sure for every <ol>, we start numbering from 1.
+//		Numbering.Num currentConcreteList=null;
+//		if (peekListItemStateStack()!=null) {
+//			currentConcreteList = peekListItemStateStack().concreteList;
+//		}
 		listItemStateStack.push(new ListItemContentState());
-		peekListItemStateStack().concreteList = currentConcreteList; 
+//		peekListItemStateStack().concreteList = currentConcreteList;
 	}
 
 
