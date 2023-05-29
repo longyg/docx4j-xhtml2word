@@ -2905,7 +2905,9 @@ because "this.handler" is null
 
         // @Fixed by longyg @2023.4.25:
         // we also need to remove redundant properties which are defined for default paragraph and default character and doc defaults
-        Utils.removeRunRedundant(wordMLPackage, rPr);
+        // @Fixed by longyg @2023.5.29:
+        // comment out below line, as we see it will remove font size wrongly.
+        // Utils.removeRunRedundant(wordMLPackage, rPr);
 
         // TODO: cleansing in table context
 
