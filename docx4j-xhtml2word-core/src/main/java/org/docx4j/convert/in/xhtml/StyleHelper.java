@@ -51,7 +51,7 @@ public class StyleHelper {
     /**
      * the elements which should enable the agent default css
      */
-    private static final List<String> ENABLE_AGENT_DEFAULT_ELEMENT = List.of("s", "strong", "em", "p", "span");
+    private static final List<String> ENABLE_AGENT_DEFAULT_ELEMENT = List.of("s", "strong", "em", "p", "span", "u");
     private final Map<Node, Map<String, PropertyValue>> elementStyleCache = new ConcurrentHashMap<>();
     private final Map<Styleable, Map<String, PropertyValue>> boxStyleCache = new ConcurrentHashMap<>();
     private final Map<Styleable, String> boxClassCache = new ConcurrentHashMap<>();
