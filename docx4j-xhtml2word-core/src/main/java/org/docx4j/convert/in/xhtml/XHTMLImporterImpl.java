@@ -70,6 +70,7 @@ import org.docx4j.model.properties.PropertyFactory;
 import org.docx4j.model.properties.paragraph.AbstractParagraphProperty;
 import org.docx4j.model.properties.paragraph.Indent;
 import org.docx4j.model.properties.run.*;
+import org.docx4j.model.styles.StyleUtil;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
@@ -1829,9 +1830,14 @@ because "this.handler" is null
             			// Since there is no style, we might use a heading style
                 		handleHeadingElement( pPr,  blockBox); // (if its h1, h2 etc)
             		} else if (s.getType()!=null && s.getType().equals("paragraph")) {
-            			PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
-            			pPr.setPStyle(pStyle);
-            			pStyle.setVal(cssClass);
+                        // @Fixed by longyg @2023.6.12:
+                        // For heading paragraphs, if they refer a style containing numPr, we should remove this numPr.
+                        // because we do not apply numbering on headings.
+                        // Here we should copy one new style without numPr, so that the existing style is not impacted.
+//            			PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
+//            			pPr.setPStyle(pStyle);
+//            			pStyle.setVal(cssClass);
+                        handleElementStyle(pPr, blockBox, s);
             		} else {
             			log.debug("For docx style for @class='" + cssClass + "', but its not a paragraph style ");
             			// Since that's not a p style, we might use a heading style
@@ -1852,6 +1858,46 @@ because "this.handler" is null
         }
 
 
+    }
+
+    protected void handleElementStyle(PPr pPr, Styleable blockBox, Style s) {
+        Style newStyle = s;
+        if (isHeading(blockBox)) {
+            PropertyResolver propertyResolver = getPropertyResolver();
+            if (null != propertyResolver) {
+                PPr effectivePPr = propertyResolver.getEffectivePPr(s.getStyleId());
+                // if it is heading and the style has numPr, copy a new style and remove the numPr, then set the new style to heading.
+                if (null != effectivePPr && effectivePPr.getNumPr() != null) {
+                    newStyle = Context.getWmlObjectFactory().createStyle();
+                    newStyle.setPPr(StyleUtil.apply(effectivePPr, newStyle.getPPr()));
+                    newStyle.getPPr().setNumPr(null);
+                    newStyle.setRPr(StyleUtil.apply(s.getRPr(), newStyle.getRPr()));
+                    String styleId = s.getStyleId() + "-custom";
+                    Style.Name name = Context.getWmlObjectFactory().createStyleName();
+                    name.setVal(styleId);
+                    newStyle.setName(name);
+                    newStyle.setStyleId(styleId);
+                    // set the based on as same as original one, so that they will be same heading level
+                    newStyle.setBasedOn(s.getBasedOn());
+                    propertyResolver.activateStyle(newStyle);
+                }
+            }
+        }
+        setParagraphStyle(pPr, newStyle);
+    }
+
+    private PropertyResolver getPropertyResolver() {
+        if (wordMLPackage == null || wordMLPackage.getMainDocumentPart() == null ||
+                wordMLPackage.getMainDocumentPart().getPropertyResolver() == null) {
+            return null;
+        }
+        return wordMLPackage.getMainDocumentPart().getPropertyResolver();
+    }
+
+    protected void setParagraphStyle(PPr pPr, Style s) {
+        PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
+        pPr.setPStyle(pStyle);
+        pStyle.setVal(s.getStyleId());
     }
 
     /**
