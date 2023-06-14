@@ -2723,7 +2723,7 @@ because "this.handler" is null
         // @Fixed by longyg @2023.6.13:
         // for some case if the ident to too big and over the page size, the content won't be seen.
         // so we should restrict the indent to not over the page size.
-        restrictIndent(pPr);
+        restrictIndent(pPr, styleable);
 
 //        for (int i = 0; i < cStyle.getDerivedValues().length; i++) {
 //            CSSName name = CSSName.getByID(i);
@@ -2770,7 +2770,6 @@ because "this.handler" is null
     }
 
     private BigInteger pgSz = null;
-
     private BigInteger pgMarLeft = null;
     private BigInteger pgMarRight = null;
 
@@ -2814,26 +2813,39 @@ because "this.handler" is null
         }
     }
 
-    private void restrictIndent(PPr pPr) {
-        if (pPr.getInd() != null) {
-            BigInteger left = pPr.getInd().getLeft();
-            if (null != left && left.compareTo(BigInteger.ZERO) > 0) {
-                // if left indent is bigger than page size,
-                // set left ident equals page size
-                BigInteger pgSz = getPgSz();
-                BigInteger pgMarLeft = getPgMarLeft() == null ? BigInteger.ZERO : getPgMarLeft();
-                BigInteger pgMarRight = getPgMarRight() == null ? BigInteger.ZERO : getPgMarRight();
-                if (null != pgSz) {
-                    BigInteger ind = pgSz.subtract(pgMarLeft).subtract(pgMarRight);
-                    if (left.compareTo(ind) > 0) {
-                        pPr.getInd().setLeft(BigInteger.ZERO);
-                        Jc jc = Context.getWmlObjectFactory().createJc();
-                        jc.setVal(JcEnumeration.RIGHT);
-                        pPr.setJc(jc);
-                    }
+    private void restrictIndent(PPr pPr, Styleable styleable) {
+        if (null == pPr.getInd()) return;
+
+        BigInteger left = pPr.getInd().getLeft();
+        if (null != left && left.compareTo(BigInteger.ZERO) > 0) {
+            // if left indent is bigger than page size,
+            // set left ident equals page size
+            BigInteger pageSize = getPgSz();
+            BigInteger marginLeft = getPgMarLeft() == null ? BigInteger.ZERO : getPgMarLeft();
+            BigInteger marginRight = getPgMarRight() == null ? BigInteger.ZERO : getPgMarRight();
+            if (null != pgSz) {
+                // here, we need also consider the width of box
+                // TBD: is it right way to get the box width?
+                BigInteger width = getWidth(styleable);
+                BigInteger ind = pageSize.subtract(marginLeft).subtract(marginRight).subtract(width);
+                if (left.compareTo(ind) > 0) {
+                    pPr.getInd().setLeft(BigInteger.ZERO);
+                    Jc jc = Context.getWmlObjectFactory().createJc();
+                    jc.setVal(JcEnumeration.RIGHT);
+                    pPr.setJc(jc);
                 }
             }
         }
+    }
+
+    private BigInteger getWidth(Styleable styleable) {
+        if (styleable instanceof BlockBox) {
+            BlockBox blockBox = (BlockBox) styleable;
+            blockBox.calcMinMaxWidth(renderer.getLayoutContext());
+            int width = Math.round(dotsToTwip(blockBox.getMaxWidth()));
+            return BigInteger.valueOf(width);
+        }
+        return BigInteger.ZERO;
     }
 
     /**
