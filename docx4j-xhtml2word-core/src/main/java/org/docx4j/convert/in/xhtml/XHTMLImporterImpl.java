@@ -2720,6 +2720,10 @@ because "this.handler" is null
             pPr.setInd(ind);
         }
 
+        // @Fixed by longyg @2023.6.13:
+        // for some case if the ident to too big and over the page size, the content won't be seen.
+        // so we should restrict the indent to not over the page size.
+        restrictIndent(pPr);
 
 //        for (int i = 0; i < cStyle.getDerivedValues().length; i++) {
 //            CSSName name = CSSName.getByID(i);
@@ -2763,6 +2767,73 @@ because "this.handler" is null
 
         log.debug(XmlUtils.marshaltoString(pPr, true, true));
 
+    }
+
+    private BigInteger pgSz = null;
+
+    private BigInteger pgMarLeft = null;
+    private BigInteger pgMarRight = null;
+
+    private BigInteger getPgSz() {
+        if (null != pgSz) {
+            return pgSz;
+        }
+        parsePgSetting();
+        return pgSz;
+    }
+
+    private BigInteger getPgMarLeft() {
+        if (null != pgMarLeft) {
+            return pgMarLeft;
+        }
+        parsePgSetting();
+        return pgMarLeft;
+    }
+
+    private BigInteger getPgMarRight() {
+        if (null != pgMarRight) {
+            return pgMarRight;
+        }
+        parsePgSetting();
+        return pgMarRight;
+    }
+
+    private void parsePgSetting() {
+        if (null != wordMLPackage.getMainDocumentPart()) {
+            org.docx4j.wml.Document document = wordMLPackage.getMainDocumentPart().getJaxbElement();
+            if (null != document && null != document.getBody()) {
+                SectPr sectPr = document.getBody().getSectPr();
+                if (null != sectPr && null != sectPr.getPgSz()) {
+                    pgSz = sectPr.getPgSz().getW();
+                }
+                if (null != sectPr && null != sectPr.getPgMar()) {
+                    pgMarLeft = sectPr.getPgMar().getLeft();
+                    pgMarRight = sectPr.getPgMar().getRight();
+                }
+            }
+        }
+    }
+
+    private void restrictIndent(PPr pPr) {
+        if (pPr.getInd() != null) {
+            BigInteger left = pPr.getInd().getLeft();
+            if (null != left && left.compareTo(BigInteger.ZERO) > 0) {
+                // if left indent is bigger than page size,
+                // set left ident equals page size
+                BigInteger pgSz = getPgSz();
+                BigInteger pgMarLeft = getPgMarLeft() == null ? BigInteger.ZERO : getPgMarLeft();
+                BigInteger pgMarRight = getPgMarRight() == null ? BigInteger.ZERO : getPgMarRight();
+                if (null != pgSz) {
+                    BigInteger ind = pgSz.subtract(pgMarLeft).subtract(pgMarRight);
+                    if (left.compareTo(ind) > 0) {
+                        pPr.getInd().setLeft(BigInteger.ZERO);
+                        Jc jc = Context.getWmlObjectFactory().createJc();
+                        jc.setVal(JcEnumeration.RIGHT);
+                        pPr.setJc(jc);
+                    }
+                }
+            }
+        }
     }
 
     /**
