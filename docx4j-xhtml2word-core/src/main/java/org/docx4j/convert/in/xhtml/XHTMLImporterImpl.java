@@ -59,6 +59,7 @@ import org.apache.james.mime4j.parser.MimeStreamParser;
 import org.docx4j.Docx4jProperties;
 import org.docx4j.UnitsOfMeasurement;
 import org.docx4j.XmlUtils;
+import org.docx4j.convert.in.xhtml.WordPageHelper.WordPageTag;
 import org.docx4j.convert.in.xhtml.renderer.DocxRenderer;
 import org.docx4j.convert.in.xhtml.utils.Utils;
 import org.docx4j.convert.out.html.HtmlCssHelper;
@@ -2326,7 +2327,28 @@ because "this.handler" is null
         CTMarkupRange markupRangeForID = bookmarkHelper.anchorToBookmark(inlineBox.getElement(), bookmarkNamePrefix,
                 getCurrentParagraph(false), this.contentContextStack.peek());
 
-        if (s != null && s.getElement() != null && s.getElement().getNodeName().equals("br")) {
+        // @Fixed by longyg @2023.5.16:
+        // check if the inline box is span with special word tag attribute,
+        // if yes, create page related runs (fldChar)
+        WordPageTag wordPageTag = WordPageHelper.getWordPageTag(inlineBox);
+
+        if (null != wordPageTag) {
+
+            // if the span has word page tag attribute, create page fldChar runs
+            List<R> runs = WordPageHelper.createWordPageRuns(wordPageTag, inlineBox);
+            RPr rPr = Context.getWmlObjectFactory().createRPr();
+            String cssClass = getStyleHelper().getInlineBoxPrimaryClass(inlineBox, containgBox);
+            if (cssClass != null) {
+                cssClass = cssClass.trim();
+            }
+            formatRPr(rPr, cssClass, cssMap);
+            runs.forEach(run -> {
+                // all runs have same RPr
+                run.setRPr(rPr);
+                getListForRun().getContent().add(run);
+            });
+
+        } else if (s != null && s.getElement() != null && s.getElement().getNodeName().equals("br")) {
 
             R run = Context.getWmlObjectFactory().createR();
             getListForRun().getContent().add(run);
