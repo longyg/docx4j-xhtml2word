@@ -61,6 +61,7 @@ import org.docx4j.UnitsOfMeasurement;
 import org.docx4j.XmlUtils;
 import org.docx4j.convert.in.xhtml.WordPageHelper.WordPageTag;
 import org.docx4j.convert.in.xhtml.renderer.DocxRenderer;
+import org.docx4j.convert.in.xhtml.utils.StyleUtils;
 import org.docx4j.convert.in.xhtml.utils.Utils;
 import org.docx4j.convert.out.html.HtmlCssHelper;
 import org.docx4j.jaxb.Context;
@@ -238,6 +239,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         // add style helper and placeholder helper
         styleHelper = new StyleHelper(this);
         placeholderHelper = new PlaceholderHelper();
+        pageSizeHelper = new PageSizeHelper(wordMLPackage, this);
 
 
         if (hyperlinkStyleId != null && wordMLPackage instanceof WordprocessingMLPackage) {
@@ -306,6 +308,8 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     private StyleHelper styleHelper;
 
     private PlaceholderHelper placeholderHelper;
+
+    private PageSizeHelper pageSizeHelper;
 
     public StyleHelper getStyleHelper() {
         return styleHelper;
@@ -1838,7 +1842,7 @@ because "this.handler" is null
 //            			PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
 //            			pPr.setPStyle(pStyle);
 //            			pStyle.setVal(cssClass);
-                        handleElementStyle(pPr, blockBox, s);
+                        StyleUtils.handleParagraphStyle(wordMLPackage, pPr, blockBox, s);
             		} else {
             			log.debug("For docx style for @class='" + cssClass + "', but its not a paragraph style ");
             			// Since that's not a p style, we might use a heading style
@@ -1859,46 +1863,6 @@ because "this.handler" is null
         }
 
 
-    }
-
-    protected void handleElementStyle(PPr pPr, Styleable blockBox, Style s) {
-        Style newStyle = s;
-        if (isHeading(blockBox)) {
-            PropertyResolver propertyResolver = getPropertyResolver();
-            if (null != propertyResolver) {
-                PPr effectivePPr = propertyResolver.getEffectivePPr(s.getStyleId());
-                // if it is heading and the style has numPr, copy a new style and remove the numPr, then set the new style to heading.
-                if (null != effectivePPr && effectivePPr.getNumPr() != null) {
-                    newStyle = Context.getWmlObjectFactory().createStyle();
-                    newStyle.setPPr(StyleUtil.apply(effectivePPr, newStyle.getPPr()));
-                    newStyle.getPPr().setNumPr(null);
-                    newStyle.setRPr(StyleUtil.apply(s.getRPr(), newStyle.getRPr()));
-                    String styleId = s.getStyleId() + "-custom";
-                    Style.Name name = Context.getWmlObjectFactory().createStyleName();
-                    name.setVal(styleId);
-                    newStyle.setName(name);
-                    newStyle.setStyleId(styleId);
-                    // set the based on as same as original one, so that they will be same heading level
-                    newStyle.setBasedOn(s.getBasedOn());
-                    propertyResolver.activateStyle(newStyle);
-                }
-            }
-        }
-        setParagraphStyle(pPr, newStyle);
-    }
-
-    private PropertyResolver getPropertyResolver() {
-        if (wordMLPackage == null || wordMLPackage.getMainDocumentPart() == null ||
-                wordMLPackage.getMainDocumentPart().getPropertyResolver() == null) {
-            return null;
-        }
-        return wordMLPackage.getMainDocumentPart().getPropertyResolver();
-    }
-
-    protected void setParagraphStyle(PPr pPr, Style s) {
-        PStyle pStyle = Context.getWmlObjectFactory().createPPrBasePStyle();
-        pPr.setPStyle(pStyle);
-        pStyle.setVal(s.getStyleId());
     }
 
     /**
@@ -2745,7 +2709,7 @@ because "this.handler" is null
         // @Fixed by longyg @2023.6.13:
         // for some case if the ident to too big and over the page size, the content won't be seen.
         // so we should restrict the indent to not over the page size.
-        restrictIndent(pPr, styleable);
+        pageSizeHelper.restrictIndent(pPr, styleable);
 
 //        for (int i = 0; i < cStyle.getDerivedValues().length; i++) {
 //            CSSName name = CSSName.getByID(i);
@@ -2789,85 +2753,6 @@ because "this.handler" is null
 
         log.debug(XmlUtils.marshaltoString(pPr, true, true));
 
-    }
-
-    private BigInteger pgSz = null;
-    private BigInteger pgMarLeft = null;
-    private BigInteger pgMarRight = null;
-
-    private BigInteger getPgSz() {
-        if (null != pgSz) {
-            return pgSz;
-        }
-        parsePgSetting();
-        return pgSz;
-    }
-
-    private BigInteger getPgMarLeft() {
-        if (null != pgMarLeft) {
-            return pgMarLeft;
-        }
-        parsePgSetting();
-        return pgMarLeft;
-    }
-
-    private BigInteger getPgMarRight() {
-        if (null != pgMarRight) {
-            return pgMarRight;
-        }
-        parsePgSetting();
-        return pgMarRight;
-    }
-
-    private void parsePgSetting() {
-        if (null != wordMLPackage.getMainDocumentPart()) {
-            org.docx4j.wml.Document document = wordMLPackage.getMainDocumentPart().getJaxbElement();
-            if (null != document && null != document.getBody()) {
-                SectPr sectPr = document.getBody().getSectPr();
-                if (null != sectPr && null != sectPr.getPgSz()) {
-                    pgSz = sectPr.getPgSz().getW();
-                }
-                if (null != sectPr && null != sectPr.getPgMar()) {
-                    pgMarLeft = sectPr.getPgMar().getLeft();
-                    pgMarRight = sectPr.getPgMar().getRight();
-                }
-            }
-        }
-    }
-
-    private void restrictIndent(PPr pPr, Styleable styleable) {
-        if (null == pPr.getInd()) return;
-
-        BigInteger left = pPr.getInd().getLeft();
-        if (null != left && left.compareTo(BigInteger.ZERO) > 0) {
-            // if left indent is bigger than page size,
-            // set left ident equals page size
-            BigInteger pageSize = getPgSz();
-            BigInteger marginLeft = getPgMarLeft() == null ? BigInteger.ZERO : getPgMarLeft();
-            BigInteger marginRight = getPgMarRight() == null ? BigInteger.ZERO : getPgMarRight();
-            if (null != pgSz) {
-                // here, we need also consider the width of box
-                // TBD: is it right way to get the box width?
-                BigInteger width = getWidth(styleable);
-                BigInteger ind = pageSize.subtract(marginLeft).subtract(marginRight).subtract(width);
-                if (left.compareTo(ind) > 0) {
-                    pPr.getInd().setLeft(BigInteger.ZERO);
-                    Jc jc = Context.getWmlObjectFactory().createJc();
-                    jc.setVal(JcEnumeration.RIGHT);
-                    pPr.setJc(jc);
-                }
-            }
-        }
-    }
-
-    private BigInteger getWidth(Styleable styleable) {
-        if (styleable instanceof BlockBox) {
-            BlockBox blockBox = (BlockBox) styleable;
-            blockBox.calcMinMaxWidth(renderer.getLayoutContext());
-            int width = Math.round(dotsToTwip(blockBox.getMaxWidth()));
-            return BigInteger.valueOf(width);
-        }
-        return BigInteger.ZERO;
     }
 
     /**
@@ -2952,36 +2837,6 @@ because "this.handler" is null
         return paddingI;
     }
 
-    private void addTextDecorationProperty(RPr rPr, CSSValue value) {
-        String cssText = value.getCssText();
-        if (cssText.contains("line-through")) {
-            PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, "line-through", "line-through");
-            Strike strike = new Strike(new DomCssValueAdaptor(val));
-            strike.set(rPr);
-        }
-        if (cssText.contains("underline")) {
-            cssText = cssText.replace("[line-through]", "").trim();
-            cssText = cssText.replace("line-through", "").trim();
-            PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, cssText, cssText);
-            Underline underline = new Underline(new DomCssValueAdaptor(val));
-            underline.set(rPr);
-        }
-    }
-
-    private void addSmallCapsProperty(RPr rPr, PropertyValue cssValue) {
-        String cssText = cssValue.getCssText();
-        if (cssText.equals("small-caps")) {
-            rPr.setSmallCaps(new BooleanDefaultTrue());
-        }
-    }
-
-    private void addAllCapsProperty(RPr rPr, PropertyValue cssValue) {
-        String cssText = cssValue.getCssText();
-        if (cssText.equals("uppercase")) {
-            rPr.setCaps(new BooleanDefaultTrue());
-        }
-    }
-
     private void addRunProperties(RPr rPr, Map cssMap) {
 
         log.debug("addRunProperties");
@@ -3002,21 +2857,9 @@ because "this.handler" is null
             PropertyValue cssValue = (PropertyValue) cssMap.get(cssName);
 
             // @Fixed by longyg @2023.4.18:
-            // for text-decoration, handle it separately, because it may contain strike and underline
-            if (cssName.equals("text-decoration")) {
-                addTextDecorationProperty(rPr, new DomCssValueAdaptor(cssValue));
+            // for text-decoration, font-variant, text-transform, handle then specially
+            if (StyleUtils.handleSpecialStyle(cssName, cssValue, rPr)) {
                 continue;
-            }
-
-            // @Fixed by longyg @2023.5.22:
-            // support small caps
-            if (cssName.equals("font-variant")) {
-                addSmallCapsProperty(rPr, cssValue);
-            }
-            // @Fixed by longyg @2023.5.22:
-            // support all caps
-            if (cssName.equals("text-transform")) {
-                addAllCapsProperty(rPr, cssValue);
             }
 
             Property runProp = PropertyFactory.createPropertyFromCssName(cssName, new DomCssValueAdaptor(cssValue));
