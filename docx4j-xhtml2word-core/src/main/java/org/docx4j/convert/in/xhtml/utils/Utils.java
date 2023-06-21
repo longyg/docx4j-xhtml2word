@@ -2,6 +2,7 @@ package org.docx4j.convert.in.xhtml.utils;
 
 import com.openhtmltopdf.css.constants.CSSName;
 import com.openhtmltopdf.css.constants.IdentValue;
+import com.openhtmltopdf.css.parser.CSSParser;
 import com.openhtmltopdf.css.parser.PropertyValue;
 import com.openhtmltopdf.css.style.CalculatedStyle;
 import com.openhtmltopdf.css.style.DerivedValue;
@@ -19,7 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.css.CSSPrimitiveValue;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 
@@ -251,5 +254,19 @@ public class Utils {
         }
         String rule = styles.substring(startIndex, endIndex);
         return rule.substring(rule.indexOf(":") + 1).trim();
+    }
+
+    public static void addSupportForMarkerPseudo() {
+        try {
+            Field supportedPseudoElements = CSSParser.class.getDeclaredField("SUPPORTED_PSEUDO_ELEMENTS");
+            if (null == supportedPseudoElements) return;
+
+            supportedPseudoElements.setAccessible(true);
+            Object elements = supportedPseudoElements.get(null);
+            if (!(elements instanceof HashSet)) return;
+            ((HashSet<String>) elements).add("marker");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

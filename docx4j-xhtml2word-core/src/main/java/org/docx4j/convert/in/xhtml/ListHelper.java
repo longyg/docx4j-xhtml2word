@@ -76,9 +76,12 @@ public class ListHelper {
 
 	public static Logger log = LoggerFactory.getLogger(ListHelper.class);
 
-	public ListHelper(XHTMLImporterImpl importer, NumberingDefinitionsPart ndp) {
+	private StyleHelper styleHelper;
+
+	public ListHelper(XHTMLImporterImpl importer, NumberingDefinitionsPart ndp, StyleHelper styleHelper) {
 		this.importer=importer;
 		this.ndp=ndp;
+		this.styleHelper = styleHelper;
 	}
 
 	/**
@@ -410,7 +413,7 @@ public class ListHelper {
 
 
 
-	private Lvl createLevel(int level, Map<String, PropertyValue> cssMap) {
+	private Lvl createLevel(int level, Map<String, PropertyValue> cssMap, Element e) {
 
 //		System.out.println("creating level" + level);
 //		(new Throwable()).printStackTrace();
@@ -447,12 +450,16 @@ public class ListHelper {
 				cssMap.get("list-style-type" ).getCssText(),
 				level+1));
 
+		RPr rPr = wmlObjectFactory.createRPr();
+		lvl.setRPr(rPr);
+		// @Fixed by longyg @2023.6.21:
+		// apply other styles as well to rPr of lvl
+		importer.addRunProperties(rPr, styleHelper.getListMarkerPseudoElementStyle(e), false);
+
 		// Bullets have an associated font
 		RFonts rfonts = geRFontsForCSSListStyleType(cssMap.get("list-style-type" ).getCssText());
 		if (rfonts!=null) {
-			RPr rpr = wmlObjectFactory.createRPr();
-			rpr.setRFonts(rfonts);
-			lvl.setRPr(rpr);
+			rPr.setRFonts(rfonts);
 		}
 
 
@@ -522,7 +529,7 @@ public class ListHelper {
 		if (lvl==null) {
 			// Nope, need to create it
 			int level = listStack.size()-1;
-			ndp.addAbstractListNumberingDefinitionLevel(abstractList, createLevel(level, cssMap));
+			ndp.addAbstractListNumberingDefinitionLevel(abstractList, createLevel(level, cssMap, e));
 			//log.debug("ADDED LEVEL " + level);
 			//lvl = getLevel(abstractList, listStack.size()-1);
 			

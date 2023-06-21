@@ -216,6 +216,10 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         // set customized system properties
         setSystemProperties();
 
+        // @Fixed by longyg @2023.6.21:
+        // add ::marker pseudo to CSSParser via reflection
+        Utils.addSupportForMarkerPseudo();
+
         displayFormattingOptionSettings();
 
         this.wordMLPackage = wordMLPackage;
@@ -233,14 +237,14 @@ public class XHTMLImporterImpl implements XHTMLImporter {
             }
         }
 
-        listHelper = new ListHelper(this, ndp);
-        tableHelper = new TableHelper(this);
         // @Fixed by longyg @2023.4.15:
-        // add style helper and placeholder helper
+        // add customized helpers
         styleHelper = new StyleHelper(this);
         placeholderHelper = new PlaceholderHelper();
         pageSizeHelper = new PageSizeHelper(wordMLPackage, this);
 
+        listHelper = new ListHelper(this, ndp, styleHelper);
+        tableHelper = new TableHelper(this);
 
         if (hyperlinkStyleId != null && wordMLPackage instanceof WordprocessingMLPackage) {
             ((WordprocessingMLPackage) wordMLPackage).getMainDocumentPart().getPropertyResolver().activateStyle(hyperlinkStyleId);
@@ -2468,7 +2472,7 @@ because "this.handler" is null
         //addRunProperties(rPr, cssMap );  // ?????
 
         if (runFormatting.equals(FormattingOption.IGNORE_CLASS)) {
-            addRunProperties(rPr, cssMap);
+            addRunProperties(rPr, cssMap, true);
         } else {
             // CLASS_TO_STYLE_ONLY or CLASS_PLUS_OTHER
             if (cssClass != null) {
@@ -2499,7 +2503,7 @@ because "this.handler" is null
                 }
             }
             if (runFormatting.equals(FormattingOption.CLASS_PLUS_OTHER)) {
-                addRunProperties(rPr, cssMap);
+                addRunProperties(rPr, cssMap, true);
             }
 
         }
@@ -2837,7 +2841,7 @@ because "this.handler" is null
         return paddingI;
     }
 
-    private void addRunProperties(RPr rPr, Map cssMap) {
+    public void addRunProperties(RPr rPr, Map cssMap, boolean clearRedundant) {
 
         log.debug("addRunProperties");
 
@@ -2878,32 +2882,34 @@ because "this.handler" is null
         // simply duplicates something which is already in the paragraph style,
         // since such direct formatting is probably not the author's intent,
         // and makes the document less maintainable
-        RPr styleRPr = null;
-        PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
-        if (pStyleId != null) {
+        if (clearRedundant) {
+            RPr styleRPr = null;
+            PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
+            if (pStyleId != null) {
 
-            styleRPr = propertyResolver.getEffectiveRPr(pStyleId);
-            if (styleRPr != null) {
+                styleRPr = propertyResolver.getEffectiveRPr(pStyleId);
+                if (styleRPr != null) {
+                    RPrCleanser.removeRedundantProperties(styleRPr, rPr);
+                }
+                // Works nicely, except for color.  TODO: look into that
+            }
+            // Repeat the process for overlap with run level styles,
+            propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
+            if (rPr.getRStyle() != null) {
+
+                String styleId = rPr.getRStyle().getVal();
+                styleRPr = propertyResolver.getEffectiveRPr(styleId);
                 RPrCleanser.removeRedundantProperties(styleRPr, rPr);
             }
-            // Works nicely, except for color.  TODO: look into that
+
+            // @Fixed by longyg @2023.4.25:
+            // we also need to remove redundant properties which are defined for default paragraph and default character and doc defaults
+            // @Fixed by longyg @2023.5.29:
+            // comment out below line, as we see it will remove font size wrongly.
+            // Utils.removeRunRedundant(wordMLPackage, rPr);
+
+            // TODO: cleansing in table context
         }
-        // Repeat the process for overlap with run level styles,
-        propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
-        if (rPr.getRStyle() != null) {
-
-            String styleId = rPr.getRStyle().getVal();
-            styleRPr = propertyResolver.getEffectiveRPr(styleId);
-            RPrCleanser.removeRedundantProperties(styleRPr, rPr);
-        }
-
-        // @Fixed by longyg @2023.4.25:
-        // we also need to remove redundant properties which are defined for default paragraph and default character and doc defaults
-        // @Fixed by longyg @2023.5.29:
-        // comment out below line, as we see it will remove font size wrongly.
-        // Utils.removeRunRedundant(wordMLPackage, rPr);
-
-        // TODO: cleansing in table context
 
     }
 

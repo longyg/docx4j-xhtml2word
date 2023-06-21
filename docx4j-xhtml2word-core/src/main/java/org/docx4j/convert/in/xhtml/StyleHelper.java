@@ -88,7 +88,7 @@ public class StyleHelper {
 
     public StylesheetFactory getStylesheetFactory() {
         if (null != stylesheetFactory) return stylesheetFactory;
-        stylesheetFactory = new StylesheetFactoryImpl(uac);
+        stylesheetFactory = new StylesheetFactoryImpl(getUac());
         return stylesheetFactory;
     }
 
@@ -471,6 +471,178 @@ public class StyleHelper {
             }
         } else {
             addTableDefaultStyles(parent, styles);
+        }
+    }
+
+    public Map<String, PropertyValue> getListMarkerPseudoElementStyle(Element element) {
+        Map<String, PropertyValue> styles = new HashMap<>();
+        // this method is only applicable for <li> element
+        if (!element.getNodeName().equals("li")) return styles;
+
+        // grouped selectors by priority, the last is the highest priority
+        List<List<String>> groupedSelectors = getListMarkerPseudoSelectors(element);
+        if (groupedSelectors.isEmpty()) return styles;
+
+        // documentRuleSets are ordered according to definition order in HTML document
+        List<RuleSet> documentRuleSets = getRuleSetList(getDocumentStylesheets());
+
+        for (List<String> selectors : groupedSelectors) {
+            for (RuleSet ruleSet : documentRuleSets) {
+                if (containsIgnoreCase(selectors, ruleSet.getSelector())) {
+                    ruleSet.getPropertyDeclarations().forEach(pd -> {
+                        String cssName = pd.getCSSName().toString();
+                        if (!styles.containsKey(cssName)) {
+                            styles.put(cssName, (PropertyValue) pd.getValue());
+                        }
+                    });
+                }
+            }
+        }
+        return styles;
+    }
+
+    private boolean containsIgnoreCase(List<String> list, String target) {
+        for (String s : list) {
+            if (s.equalsIgnoreCase(target)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * get list marker pseduo selects by priority
+     */
+    private List<List<String>> getListMarkerPseudoSelectors(Element element) {
+        List<List<String>> result = new ArrayList<>();
+        if (!element.getNodeName().equals("li")) return result;
+
+        String liMarker = "li";
+        // li::marker, lowest priority
+        result.add(Collections.singletonList(liMarker));
+        String listType = getListType(element);
+        // ol > li::marker or ul > li::marker
+        result.add(Collections.singletonList(listType + " > " + liMarker));
+
+        // .li1>li::marker
+        List<String> liClassSelectors = new ArrayList<>();
+        addClassSelectors(liClassSelectors, element, liMarker);
+        if (!liClassSelectors.isEmpty()) {
+            result.add(liClassSelectors);
+        }
+
+        // highest priority
+        // ol1>li::marker
+        Node parentNode = element.getParentNode();
+        if (null != parentNode && parentNode.getNodeType() == Node.ELEMENT_NODE) {
+            Element parent = (Element) parentNode;
+            if (parent.getNodeName().equalsIgnoreCase("ol") ||
+                    parent.getNodeName().equalsIgnoreCase("ul")) {
+                List<String> listClassSelectors = new ArrayList<>();
+                addClassSelectors(listClassSelectors, parent, liMarker);
+                if (!listClassSelectors.isEmpty()) {
+                    result.add(listClassSelectors);
+                }
+            }
+        }
+        return result;
+    }
+
+    private void addClassSelectors(List<String> classSelectors, Element element, String liMarker) {
+        String aClass = element.getAttribute("class");
+        String[] classes = aClass.split("\\s+");
+        for (String clz : classes) {
+            if (!"".equals(clz)) {
+                classSelectors.add("." + clz + " > " + liMarker);
+            }
+        }
+    }
+
+    private String getListType(Element liElement) {
+        String listType = "ol";
+        Node parentNode = liElement.getParentNode();
+        if (parentNode != null && parentNode.getNodeName().equalsIgnoreCase("ul")) {
+            listType = "ul";
+        }
+        return listType;
+    }
+
+    private List<RuleSet> getRuleSetList(List<StylesheetInfo> infos) {
+        List<RuleSet> ruleSets = new ArrayList<>();
+        for (StylesheetInfo info : infos) {
+            if (null == info.getStylesheet()) continue;
+            for (Object content : info.getStylesheet().getContents()) {
+                if (content instanceof Ruleset) {
+                    Ruleset ruleset = (Ruleset) content;
+                    addRuleSet(ruleSets, ruleset);
+                }
+            }
+        }
+        return ruleSets;
+    }
+
+    private void addRuleSet(List<RuleSet> ruleSets, Ruleset ruleset) {
+        for (Selector fsSelector : ruleset.getFSSelectors()) {
+            String selector = fsSelector.toString().trim();
+
+            RuleSet ruleSet = getRuleSetBySelector(ruleSets, selector);
+            if (null == ruleSet) {
+                // must create a new ArrayList, because the ruleset.getPropertyDeclarations() is immutable
+                ruleSet = new RuleSet(selector, new ArrayList<>(ruleset.getPropertyDeclarations()));
+                ruleSets.add(ruleSet);
+            } else {
+                ruleSet.getPropertyDeclarations().addAll(ruleset.getPropertyDeclarations());
+            }
+        }
+    }
+
+    private RuleSet getRuleSetBySelector(List<RuleSet> ruleSets, String selector) {
+        for (RuleSet ruleSet : ruleSets) {
+            if (ruleSet.getSelector().equals(selector)) {
+                return ruleSet;
+            }
+        }
+        return null;
+    }
+
+    static class RuleSet {
+        private String selector;
+        private List<PropertyDeclaration> propertyDeclarations = new ArrayList<>();
+
+        public RuleSet(String selector, List<PropertyDeclaration> propertyDeclarations) {
+            this.selector = selector;
+            this.propertyDeclarations = propertyDeclarations;
+        }
+
+        public String getSelector() {
+            return selector;
+        }
+
+        public void setSelector(String selector) {
+            this.selector = selector;
+        }
+
+        public List<PropertyDeclaration> getPropertyDeclarations() {
+            return propertyDeclarations;
+        }
+
+        public void setPropertyDeclarations(List<PropertyDeclaration> propertyDeclarations) {
+            this.propertyDeclarations = propertyDeclarations;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            RuleSet ruleSet = (RuleSet) o;
+
+            return selector.equals(ruleSet.selector);
+        }
+
+        @Override
+        public int hashCode() {
+            return selector.hashCode();
         }
     }
 }
