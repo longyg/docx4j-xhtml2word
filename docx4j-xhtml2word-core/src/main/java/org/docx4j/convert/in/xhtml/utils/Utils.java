@@ -179,7 +179,6 @@ public class Utils {
     }
 
     public static void handleCssMap(Map<String, PropertyValue> cssMap, Map<String, PropertyValue> selfCssMap) {
-        cssMap.remove(FONT_FAMILY);
         if (selfCssMap.containsKey(FONT_FAMILY)) {
             cssMap.put(FONT_FAMILY, selfCssMap.get(FONT_FAMILY));
         }
