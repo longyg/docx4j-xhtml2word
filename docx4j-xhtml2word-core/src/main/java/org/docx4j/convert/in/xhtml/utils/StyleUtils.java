@@ -82,22 +82,26 @@ public class StyleUtils {
     }
 
     public static void setTextDecorationProperty(RPr rPr, CSSValue value) {
-        String cssText = value.getCssText();
-        if (cssText.contains(LINE_THROUGH) && cssText.contains(DOUBLE)) {
-            PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, DOUBLE_LINE_THROUGH, DOUBLE_LINE_THROUGH);
-            DStrike dstrike = new DStrike(new DomCssValueAdaptor(val));
-            dstrike.set(rPr);
-        } else if (cssText.contains(LINE_THROUGH)) {
-            PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, LINE_THROUGH, LINE_THROUGH);
-            Strike strike = new Strike(new DomCssValueAdaptor(val));
-            strike.set(rPr);
-        }
-        if (cssText.contains(UNDERLINE)) {
-            cssText = cssText.replace("[" + LINE_THROUGH + "]", "").trim();
-            cssText = cssText.replace(LINE_THROUGH, "").trim();
-            PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, cssText, cssText);
-            Underline underline = new Underline(new DomCssValueAdaptor(val));
-            underline.set(rPr);
+        String[] subValues = value.getCssText().split(";");
+        // the low index has high priority, so we loop from last to first item
+        for (int i = subValues.length - 1; i >= 0; i--) {
+            String cssText = subValues[i];
+            if (cssText.contains(LINE_THROUGH) && cssText.contains(DOUBLE)) {
+                PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, DOUBLE_LINE_THROUGH, DOUBLE_LINE_THROUGH);
+                DStrike dstrike = new DStrike(new DomCssValueAdaptor(val));
+                dstrike.set(rPr);
+            } else if (cssText.contains(LINE_THROUGH)) {
+                PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, LINE_THROUGH, LINE_THROUGH);
+                Strike strike = new Strike(new DomCssValueAdaptor(val));
+                strike.set(rPr);
+            }
+            if (cssText.contains(UNDERLINE)) {
+                cssText = cssText.replace("[" + LINE_THROUGH + "]", "").trim();
+                cssText = cssText.replace(LINE_THROUGH, "").trim();
+                PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, cssText, cssText);
+                Underline underline = new Underline(new DomCssValueAdaptor(val));
+                underline.set(rPr);
+            }
         }
     }
 

@@ -246,12 +246,15 @@ public class StyleHelper {
         return styles;
     }
 
+    /**
+     * source is parent node's style, dest is child node's style
+     */
     private void copyNotExistStyles(Map<String, PropertyValue> source, Map<String, PropertyValue> dest) {
         source.forEach((name, value) -> {
             // special handling for text-decoration, because in HTML, it needs to be merged from parent
             if (name.equals(TEXT_DECORATION) && dest.containsKey(TEXT_DECORATION)) {
                 // merge css value
-                String cssText = dest.get(name).getCssText() + " " + source.get(name).getCssText();
+                String cssText = dest.get(name).getCssText() + ";" + source.get(name).getCssText();
                 PropertyValue val = new PropertyValue(CSSPrimitiveValue.CSS_STRING, cssText, cssText);
                 dest.put(name, val);
             } else if (!dest.containsKey(name)) {
