@@ -2028,7 +2028,7 @@ because "this.handler" is null
             return;
         }
 
-        if (inlineBox.getElement() == null && inlineBox.getText().equals(" ")) {
+        if (inlineBox.getElement() == null && inlineBox.getText().equals("\u00A0")) {
             log.debug("Ignoring null element inline box");
             return;
         }

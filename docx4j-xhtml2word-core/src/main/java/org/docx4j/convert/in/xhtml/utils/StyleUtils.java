@@ -27,30 +27,59 @@ public class StyleUtils {
     private static final String UNDERLINE = "underline";
     private static final String DOUBLE = "double";
 
+    /**
+     * create new custom common style if there are below scenarios:
+     * 1. the original style have underline or strike or dstrike.
+     * 2. the original style is heading style and has numbering style.
+     */
     public static void handleParagraphStyle(WordprocessingMLPackage wordMLPackage, PPr pPr, Styleable blockBox, Style s) {
-        Style newStyle = s;
-        if (isHeading(blockBox)) {
-            PropertyResolver propertyResolver = getPropertyResolver(wordMLPackage);
-            if (null != propertyResolver) {
-                PPr effectivePPr = propertyResolver.getEffectivePPr(s.getStyleId());
-                // if it is heading and the style has numPr, copy a new style and remove the numPr, then set the new style to heading.
-                if (null != effectivePPr && effectivePPr.getNumPr() != null) {
-                    newStyle = Context.getWmlObjectFactory().createStyle();
-                    newStyle.setPPr(StyleUtil.apply(effectivePPr, newStyle.getPPr()));
-                    newStyle.getPPr().setNumPr(null);
-                    newStyle.setRPr(StyleUtil.apply(s.getRPr(), newStyle.getRPr()));
-                    String styleId = s.getStyleId() + "-custom";
-                    Style.Name name = Context.getWmlObjectFactory().createStyleName();
-                    name.setVal(styleId);
-                    newStyle.setName(name);
-                    newStyle.setStyleId(styleId);
-                    // set the based on as same as original one, so that they will be same heading level
-                    newStyle.setBasedOn(s.getBasedOn());
-                    propertyResolver.activateStyle(newStyle);
+        Style newStyle = null;
+        PropertyResolver propertyResolver = getPropertyResolver(wordMLPackage);
+        if (null != propertyResolver) {
+            PPr effectivePPr = propertyResolver.getEffectivePPr(s.getStyleId());
+            RPr effectiveRPr = propertyResolver.getEffectiveRPr(s.getStyleId());
+
+            if (hasUnderlineOrStrike(effectiveRPr)) {
+                newStyle = createNewCustomStyle(s, effectivePPr, effectiveRPr);
+                newStyle.getRPr().setU(null);
+                newStyle.getRPr().setStrike(null);
+                newStyle.getRPr().setDstrike(null);
+            }
+
+            if (isHeading(blockBox) && null != effectivePPr && effectivePPr.getNumPr() != null) {
+                if (null == newStyle) {
+                    newStyle = createNewCustomStyle(s, effectivePPr, effectiveRPr);
                 }
+                newStyle.getPPr().setNumPr(null);
+            }
+
+            if (null != newStyle) {
+                propertyResolver.activateStyle(newStyle);
             }
         }
+
+        if (null == newStyle) {
+            newStyle = s;
+        }
         setParagraphStyle(pPr, newStyle);
+    }
+
+    private static boolean hasUnderlineOrStrike(RPr rPr) {
+        return rPr.getU() != null || rPr.getStrike() != null || rPr.getDstrike() != null;
+    }
+
+    private static Style createNewCustomStyle(Style s, PPr pPr, RPr rPr) {
+        Style newStyle = Context.getWmlObjectFactory().createStyle();
+        newStyle.setPPr(StyleUtil.apply(pPr, newStyle.getPPr()));
+        newStyle.setRPr(StyleUtil.apply(rPr, newStyle.getRPr()));
+        String styleId = s.getStyleId() + "-custom";
+        Style.Name name = Context.getWmlObjectFactory().createStyleName();
+        name.setVal(styleId);
+        newStyle.setName(name);
+        newStyle.setStyleId(styleId);
+        // set the based on as same as original one, so that heading will be same heading level
+        newStyle.setBasedOn(s.getBasedOn());
+        return newStyle;
     }
 
     public static PropertyResolver getPropertyResolver(WordprocessingMLPackage wordMLPackage) {
