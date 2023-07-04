@@ -85,6 +85,7 @@ public class PageSizeHelper {
                 // TBD: is it right way to get the box width?
                 BigInteger width = getWidth(styleable);
                 BigInteger ind = pageSize.subtract(marginLeft).subtract(marginRight).subtract(width);
+//                BigInteger ind = pageSize.subtract(marginLeft).subtract(marginRight);
                 if (left.compareTo(ind) > 0) {
                     pPr.getInd().setLeft(BigInteger.ZERO);
                     Jc jc = Context.getWmlObjectFactory().createJc();

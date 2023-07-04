@@ -2885,21 +2885,19 @@ because "this.handler" is null
         if (clearRedundant) {
             RPr styleRPr = null;
             PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
-            if (pStyleId != null) {
-
-                styleRPr = propertyResolver.getEffectiveRPr(pStyleId);
-                if (styleRPr != null) {
+            if (null != propertyResolver) {
+                if (rPr.getRStyle() != null) {
+                    // Repeat the process for overlap with run level styles
+                    String styleId = rPr.getRStyle().getVal();
+                    styleRPr = propertyResolver.getEffectiveRPr(styleId);
                     RPrCleanser.removeRedundantProperties(styleRPr, rPr);
+                } else if (pStyleId != null){
+                    // if there is no run level style, we try to remove the overlap styles with p level style.
+                    styleRPr = propertyResolver.getEffectiveRPr(pStyleId);
+                    if (styleRPr != null) {
+                        RPrCleanser.removeRedundantProperties(styleRPr, rPr);
+                    }
                 }
-                // Works nicely, except for color.  TODO: look into that
-            }
-            // Repeat the process for overlap with run level styles,
-            propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
-            if (rPr.getRStyle() != null) {
-
-                String styleId = rPr.getRStyle().getVal();
-                styleRPr = propertyResolver.getEffectiveRPr(styleId);
-                RPrCleanser.removeRedundantProperties(styleRPr, rPr);
             }
 
             // @Fixed by longyg @2023.4.25:

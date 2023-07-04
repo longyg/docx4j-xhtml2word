@@ -61,6 +61,11 @@ public class StyleUtils {
         if (null == newStyle) {
             newStyle = s;
         }
+
+        // for color, special handling
+        if (null != newStyle.getRPr() && null != s.getRPr()) {
+            newStyle.getRPr().setColor(s.getRPr().getColor());
+        }
         setParagraphStyle(pPr, newStyle);
     }
 
