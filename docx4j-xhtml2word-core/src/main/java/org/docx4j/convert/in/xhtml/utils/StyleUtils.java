@@ -1,10 +1,15 @@
 package org.docx4j.convert.in.xhtml.utils;
 
+import com.openhtmltopdf.css.constants.CSSName;
 import com.openhtmltopdf.css.parser.PropertyValue;
+import com.openhtmltopdf.css.style.derived.LengthValue;
 import com.openhtmltopdf.layout.Styleable;
+import com.openhtmltopdf.newtable.TableCellBox;
+import com.openhtmltopdf.render.BlockBox;
 import org.docx4j.convert.in.xhtml.DomCssValueAdaptor;
 import org.docx4j.jaxb.Context;
 import org.docx4j.model.PropertyResolver;
+import org.docx4j.model.properties.paragraph.Indent;
 import org.docx4j.model.properties.run.DStrike;
 import org.docx4j.model.properties.run.Strike;
 import org.docx4j.model.properties.run.Underline;
@@ -13,6 +18,8 @@ import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.wml.*;
 import org.w3c.dom.css.CSSPrimitiveValue;
 import org.w3c.dom.css.CSSValue;
+
+import java.math.BigInteger;
 
 /**
  * @author longyg
@@ -174,5 +181,24 @@ public class StyleUtils {
             return true;
         }
         return false;
+    }
+
+    public static void handleTextIndent(PPrBase.Ind ind, Styleable styleable) {
+        if (styleable instanceof BlockBox && !(styleable instanceof TableCellBox)) {
+            BlockBox bb = (BlockBox) styleable;
+            if (bb.getStyle() != null
+                    && bb.getStyle().valueByName(CSSName.TEXT_INDENT) instanceof LengthValue) {
+
+                LengthValue textIndent = (LengthValue) bb.getStyle().valueByName(CSSName.TEXT_INDENT);
+                short textIndentVal = textIndent.getLengthPrimitiveType();
+                PropertyValue val = new PropertyValue(textIndentVal, textIndent.asFloat(), textIndent.asString());
+                int indent = Indent.getTwip(new DomCssValueAdaptor(val));
+                if (indent < 0) {
+                    ind.setHanging(BigInteger.valueOf(-indent));
+                } else if (indent > 0) {
+                    ind.setFirstLine(BigInteger.valueOf(indent));
+                }
+            }
+        }
     }
 }

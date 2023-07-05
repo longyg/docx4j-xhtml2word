@@ -72,7 +72,6 @@ import org.docx4j.model.properties.PropertyFactory;
 import org.docx4j.model.properties.paragraph.AbstractParagraphProperty;
 import org.docx4j.model.properties.paragraph.Indent;
 import org.docx4j.model.properties.run.*;
-import org.docx4j.model.styles.StyleUtil;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
@@ -96,7 +95,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.css.CSSPrimitiveValue;
 //import org.w3c.dom.css.CSSPrimitiveValue;
 //import org.w3c.dom.css.CSSValue;
-import org.w3c.dom.css.CSSValue;
 import org.xml.sax.InputSource;
 
 import com.openhtmltopdf.css.constants.CSSName;
@@ -2707,6 +2705,9 @@ because "this.handler" is null
             log.debug("not in list; handle indent");
             Ind ind = Context.getWmlObjectFactory().createPPrBaseInd();
             ind.setLeft(BigInteger.valueOf(getAncestorIndentation(styleable)));
+            // @Fixed by longyg @2023.7.5:
+            // the text-indent css property should be handled as well
+            StyleUtils.handleTextIndent(ind, styleable);
             pPr.setInd(ind);
         }
 
