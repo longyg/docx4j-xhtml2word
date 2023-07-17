@@ -150,6 +150,10 @@ public class StyleUtils {
         String cssText = cssValue.getCssText();
         if (cssText.equals("small-caps")) {
             rPr.setSmallCaps(new BooleanDefaultTrue());
+        } else if (cssText.equals("none")) {
+            BooleanDefaultTrue booleanFalse = new BooleanDefaultTrue();
+            booleanFalse.setVal(false);
+            rPr.setSmallCaps(booleanFalse);
         }
     }
 
@@ -157,6 +161,10 @@ public class StyleUtils {
         String cssText = cssValue.getCssText();
         if (cssText.equals("uppercase")) {
             rPr.setCaps(new BooleanDefaultTrue());
+        } else if (cssText.equals("none")) {
+            BooleanDefaultTrue booleanFalse = new BooleanDefaultTrue();
+            booleanFalse.setVal(false);
+            rPr.setCaps(booleanFalse);
         }
     }
 
@@ -195,7 +203,7 @@ public class StyleUtils {
                 int indent = Indent.getTwip(new DomCssValueAdaptor(val));
                 if (indent < 0) {
                     ind.setHanging(BigInteger.valueOf(-indent));
-                } else if (indent > 0) {
+                } else {
                     ind.setFirstLine(BigInteger.valueOf(indent));
                 }
             }

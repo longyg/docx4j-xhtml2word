@@ -2693,10 +2693,14 @@ because "this.handler" is null
                 // assume 360 twips
 
                 log.debug("List indent case 3: pPr indent set for follwing child");
-                pPr.setInd(listHelper.createIndent(totalPadding
+                Ind ind = listHelper.createIndent(totalPadding
                         + ListHelper.INDENT_AFTER
                         + getLocalIndentation(styleable)
-                        - tableIndentContrib, false));
+                        - tableIndentContrib, false);
+                // @Fixed by longyg @2023.7.17:
+                // the text-indent css property should be handled as well in list
+                StyleUtils.handleTextIndent(ind, styleable);
+                pPr.setInd(ind);
             }
 
 
