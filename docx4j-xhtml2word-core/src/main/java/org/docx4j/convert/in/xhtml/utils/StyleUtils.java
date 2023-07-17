@@ -90,7 +90,7 @@ public class StyleUtils {
         newStyle.setName(name);
         newStyle.setStyleId(styleId);
         // set the based on as same as original one, so that heading will be same heading level
-        newStyle.setBasedOn(s.getBasedOn());
+        // newStyle.setBasedOn(s.getBasedOn());
         return newStyle;
     }
 
