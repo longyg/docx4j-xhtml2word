@@ -1,18 +1,15 @@
 package org.docx4j.convert.in.xhtml;
 
-import java.text.MessageFormat;
-import java.util.HashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.apache.commons.codec.binary.Base64;
+import org.docx4j.UnitsOfMeasurement;
 import org.docx4j.convert.in.xhtml.renderer.Docx4JFSImage;
 import org.docx4j.convert.in.xhtml.renderer.Docx4jUserAgent;
 import org.docx4j.convert.in.xhtml.utils.Utils;
 import org.docx4j.dml.CTTransform2D;
-import org.docx4j.dml.Graphic;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.jaxb.Context;
+import org.docx4j.model.structure.PageDimensions;
+import org.docx4j.model.structure.SectionWrapper;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.Part;
 import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
@@ -24,6 +21,12 @@ import org.docx4j.wml.Style.BasedOn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
+
+import java.text.MessageFormat;
+import java.util.HashMap;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class XHTMLImageHandlerDefault implements XHTMLImageHandler {
 	
@@ -161,8 +164,23 @@ public class XHTMLImageHandlerDefault implements XHTMLImageHandler {
 								(cx / imagePart.getImageInfo().getSize().getWidthPx());
 						
 					}
-					inline = imagePart.createImageInline(null, e.getAttribute("alt"), 
-							docPrId, 1, cx, cy, false);
+					// @Fixed by longyg @2023.7.18:
+					// if the image is too big and over page width, then do not use it's size, instead, scale it.
+					if (isImageWidthOverPageWidth(wordMLPackage, cx)) {
+						if (maxWidth>0) {
+							log.debug("image maxWidth:" + maxWidth + ", table style: " + tableStyle);
+							long excessWidth = getTblCellMargins(tableStyle);
+							if(excessWidth > 0) {
+								log.debug("table style margins subtracted (twips): " + excessWidth);
+							}
+							inline = imagePart.createImageInline(null, e.getAttribute("alt"), docPrId, 1, false, maxWidth - (int)excessWidth);
+						} else {
+							inline = imagePart.createImageInline(null, e.getAttribute("alt"), docPrId, 1, false);
+						}
+					} else {
+						inline = imagePart.createImageInline(null, e.getAttribute("alt"),
+								docPrId, 1, cx, cy, false);
+					}
 					
 					/*
 					 * That sets text wrapping distance from text to 0.
@@ -200,6 +218,14 @@ public class XHTMLImageHandlerDefault implements XHTMLImageHandler {
 			run.getContent().add(text);
 		}
 		
+	}
+
+	private boolean isImageWidthOverPageWidth(WordprocessingMLPackage wmlPackage, long cx) {
+		List<SectionWrapper> sections = wmlPackage.getDocumentModel().getSections();
+		PageDimensions page = sections.get(sections.size() - 1).getPageDimensions();
+		int writableWidthTwips = page.getWritableWidthTwips();
+		long writableWidth = UnitsOfMeasurement.twipToEMU(writableWidthTwips);
+		return cx > writableWidth;
 	}
 
 	private void applyTransform(Element e, Inline inline) {
