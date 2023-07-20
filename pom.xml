@@ -370,13 +370,11 @@
                 <module>docx4j-xhtml2word-samples</module>
             </modules>
         </profile>
+
         <profile>
-            <id>jdk-11-config</id>
-            <activation>
-                <jdk>[11,)</jdk>
-            </activation>
+            <id>OSGi</id>
             <properties>
-                <javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
+                <packaging.type>bundle</packaging.type>
             </properties>
             <modules>
                 <module>docx4j-xhtml2word-core</module>
@@ -385,9 +383,13 @@
         </profile>
 
         <profile>
-            <id>OSGi</id>
+            <id>all-modules</id>
+            <activation>
+                <!--<jdk>[11,)</jdk>-->
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <properties>
-                <packaging.type>bundle</packaging.type>
+                <javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
             </properties>
             <modules>
                 <module>docx4j-xhtml2word-core</module>
