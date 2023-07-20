@@ -22,10 +22,10 @@
     <packaging>pom</packaging>
     <name>docx4j-xhtml2word</name>
 
-    <modules>
-        <module>docx4j-xhtml2word-core</module>
-        <module>docx4j-xhtml2word-samples</module>
-    </modules>
+<!--    <modules>-->
+<!--        <module>docx4j-xhtml2word-core</module>-->
+<!--        <module>docx4j-xhtml2word-samples</module>-->
+<!--    </modules>-->
 
     <description>
         docx4j-ImportXHTML converts XHTML to OpenXML WordML (docx) using docx4j
@@ -365,6 +365,10 @@
             <properties>
                 <javadocExecutable>${java.home}/../bin/javadoc</javadocExecutable>
             </properties>
+            <modules>
+                <module>docx4j-xhtml2word-core</module>
+                <module>docx4j-xhtml2word-samples</module>
+            </modules>
         </profile>
         <profile>
             <id>jdk-11-config</id>
@@ -374,20 +378,6 @@
             <properties>
                 <javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
             </properties>
-        </profile>
-
-        <profile>
-            <id>OSGi</id>
-            <properties>
-                <packaging.type>bundle</packaging.type>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>all-modules</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
             <modules>
                 <module>docx4j-xhtml2word-core</module>
                 <module>docx4j-xhtml2word-samples</module>
@@ -395,7 +385,18 @@
         </profile>
 
         <profile>
-            <id>core-modules</id>
+            <id>OSGi</id>
+            <properties>
+                <packaging.type>bundle</packaging.type>
+            </properties>
+            <modules>
+                <module>docx4j-xhtml2word-core</module>
+                <module>docx4j-xhtml2word-samples</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>deploy-modules</id>
             <modules>
                 <module>docx4j-xhtml2word-core</module>
             </modules>
