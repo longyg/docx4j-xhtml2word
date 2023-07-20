@@ -384,7 +384,18 @@
         </profile>
 
         <profile>
-            <id>deploy</id>
+            <id>all-modules</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <modules>
+                <module>docx4j-xhtml2word-core</module>
+                <module>docx4j-xhtml2word-samples</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>core-modules</id>
             <modules>
                 <module>docx4j-xhtml2word-core</module>
             </modules>

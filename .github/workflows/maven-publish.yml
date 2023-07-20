@@ -28,7 +28,7 @@ jobs:
       run: mvn clean package
 
     - name: Publish to the Maven Central Repository
-      run: mvn -Pdeploy --no-transfer-progress --batch-mode deploy -Dmaven.test.skip=true
+      run: mvn -P !all-modules,core-modules --no-transfer-progress --batch-mode deploy -Dmaven.test.skip=true
       env:
         MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
