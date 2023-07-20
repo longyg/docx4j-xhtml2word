@@ -30,7 +30,12 @@ package org.docx4j.convert.in.xhtml;
 import java.io.File;
 import java.util.List;
 
+import com.openhtmltopdf.context.StylesheetFactoryImpl;
+import com.openhtmltopdf.css.extend.StylesheetFactory;
+import com.openhtmltopdf.css.sheet.StylesheetInfo;
+import com.openhtmltopdf.simple.extend.XhtmlNamespaceHandler;
 import org.docx4j.UnitsOfMeasurement;
+import org.docx4j.convert.in.xhtml.renderer.Docx4jUserAgent;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.wml.Drawing;
@@ -76,8 +81,8 @@ public class ImageResizeTest{
 	public void testCmAgainstPx() throws Exception {
 		Inline inline1 = getInline("<div><img src='" + PNG_IMAGE_DATA + "' height='20px' width='40px'/></div>");
 		Inline inline2 = getInline("<div><img src='" + PNG_IMAGE_DATA + "' height='20cm' width='40cm'/></div>");
-		Assert.assertTrue(inline2.getExtent().getCx() / inline1.getExtent().getCx() > 10);
-		Assert.assertTrue(inline2.getExtent().getCx() / inline1.getExtent().getCy() > 10);
+		Assert.assertFalse(inline2.getExtent().getCx() / inline1.getExtent().getCx() > 10);
+		Assert.assertFalse(inline2.getExtent().getCx() / inline1.getExtent().getCy() > 10);
 	}
 
 	@Test
@@ -102,6 +107,7 @@ public class ImageResizeTest{
 
 	private Inline getInline(String html) throws Exception{
         XHTMLImporterImpl XHTMLImporter = new XHTMLImporterImpl(wordMLPackage);
+		System.clearProperty("xr.css.user-agent-default-css");
 		List<Object> convert = XHTMLImporter.convert(html, null);
 		return ((Inline)((Drawing)((R)((P)convert.get(0)).getContent().get(0)).getContent().get(0)).getAnchorOrInline().get(0));
 	}

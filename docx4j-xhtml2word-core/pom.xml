@@ -88,6 +88,15 @@
             <!-- <resource> <directory>src/test/resources</directory> <excludes> <exclude>*.docx</exclude>
                 </excludes> </resource> -->
         </resources>
+
+        <testResources>
+            <testResource>
+                <directory>src/main/resources</directory>
+            </testResource>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+        </testResources>
     </build>
 
     <dependencies>
