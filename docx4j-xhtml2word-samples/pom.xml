@@ -22,9 +22,7 @@
 
     <build>
         <sourceDirectory>src/main/java</sourceDirectory>
-        <testSourceDirectory>src/test/java</testSourceDirectory>
-        <outputDirectory>bin</outputDirectory> <!--  bin-mvn -->
-        <testOutputDirectory>bin-testOutput</testOutputDirectory>
+        <outputDirectory>bin</outputDirectory>
 
         <plugins>
 
@@ -42,7 +40,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.0.0-M1</version>
                 <configuration>
                     <skip>true</skip>
                 </configuration>
