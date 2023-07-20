@@ -5,8 +5,8 @@ name: release and push to central maven repository
 
 on:
   push:
-    branches:
-      - 'new_customize'
+    tags:
+      - '*'
 
 jobs:
   build:
