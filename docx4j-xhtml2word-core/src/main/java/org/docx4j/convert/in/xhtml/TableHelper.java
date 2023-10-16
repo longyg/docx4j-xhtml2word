@@ -421,7 +421,7 @@ public class TableHelper {
 			} 
 		}
 		
-		// padding becomes margin
+		/*// padding becomes margin
 		TcMar tcMar = Context.getWmlObjectFactory().createTcMar();
 		tcPr.setTcMar(tcMar); 
 
@@ -439,7 +439,7 @@ public class TableHelper {
 
 		// .. bottom
 		width = getCellMargin(tcb.getStyle(), "bottom");
-		if (width!=null) tcMar.setBottom(width);
+		if (width!=null) tcMar.setBottom(width);*/
 		
     }
 		
